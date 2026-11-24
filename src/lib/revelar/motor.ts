@@ -22,6 +22,7 @@ import {
   type PosePeca,
 } from "./geometria";
 import { Pendulo } from "./pendulo";
+import { FACE_OVAL, avaliarOclusao, cascoConvexo, expandir } from "./oclusao";
 import { padraoDebug, ajusteDaPeca, type AjustesDebug } from "./calibracao-debug";
 import { carregarMao, carregarPose, carregarRosto } from "./rastreamento";
 import type { FaceLandmarker, HandLandmarker, PoseLandmarker } from "./rastreamento";
@@ -48,6 +49,8 @@ class Slot {
   opacidadeAlvo = 0;
   opacidade = 0;
   tem = false;
+  ultimoPasso = 0;
+  tauMs = 70;
 
   atualizar(alvo: PosePeca, t: number): void {
     if (t - this.ultimoVisto > CALIBRACAO.rastreamento.segurarMs + CALIBRACAO.rastreamento.fadeMs) {
@@ -75,7 +78,9 @@ class Slot {
       desde <= segurarMs
         ? this.opacidadeAlvo
         : this.opacidadeAlvo * Math.max(0, 1 - (desde - segurarMs) / fadeMs);
-    this.opacidade += (alvo - this.opacidade) * 0.35;
+    const dt = this.ultimoPasso ? Math.max(0, t - this.ultimoPasso) : 33;
+    this.ultimoPasso = t;
+    this.opacidade += (alvo - this.opacidade) * (1 - Math.exp(-dt / this.tauMs));
     if (this.opacidade < 0.01 && desde > segurarMs) this.opacidade = 0;
   }
 }
@@ -87,6 +92,7 @@ export interface CallbacksMotor {
 }
 
 const DICA_OMBROS = "Afaste um pouco o celular para mostrar o colo";
+const DICA_MAO = "Para ver os brincos, afaste a mão do rosto";
 const DICA_PULSO = "Mostre o pulso da outra mão para a câmera";
 
 export class MotorProvador {
@@ -103,8 +109,8 @@ export class MotorProvador {
   private ultimaDeteccao = 0;
   private ultimoTs = 0;
   private slots = {
-    brincoA: new Slot(),
-    brincoB: new Slot(),
+    brincoA: Object.assign(new Slot(), { tauMs: CALIBRACAO.oclusao.suavizarMs }),
+    brincoB: Object.assign(new Slot(), { tauMs: CALIBRACAO.oclusao.suavizarMs }),
     colar: new Slot(CALIBRACAO.colar.minCutoff),
     pulseira: new Slot(),
   };
@@ -115,6 +121,9 @@ export class MotorProvador {
   private inicioFps = 0;
   private pontosDebug: Ponto[] = [];
   private baseDebug: BaseCabeca | null = null;
+  private ovalDebug: Ponto[] = [];
+  private cascosMaos: Ponto[][] = [];
+  private maoNoRosto = false;
   private valores = padraoDebug();
   private debugAtivo = false;
   private pendulos = [new Pendulo(), new Pendulo()] as const;
@@ -233,6 +242,9 @@ export class MotorProvador {
     const c = this.valores.calibracao;
     let cabeca: BaseCabeca | null = null;
     this.baseDebug = null;
+    this.ovalDebug = [];
+    this.maoNoRosto = false;
+    if (!sel.pulseira) this.cascosMaos = [];
     if ((sel.brinco || sel.colar) && this.rosto) {
       const lm = this.rosto.detectForVideo(this.video, ts).faceLandmarks[0];
       if (lm) {
@@ -252,6 +264,17 @@ export class MotorProvador {
           if (cabeca && sel.brinco) {
             const p = this.pecaAjustada(sel.brinco);
             const [a, b] = posesBrincos(cabeca, p.medida_mm * (p.ajuste?.escala ?? 1), c);
+            const oval: Ponto[] = [];
+            for (const i of FACE_OVAL) {
+              const l = lm[i];
+              if (l) oval.push({ x: l.x * w, y: l.y * h });
+            }
+            this.ovalDebug = oval;
+            // Cascos da mão vêm da última detecção (≤1 ciclo de atraso).
+            const oc = avaliarOclusao([a, b], oval, this.cascosMaos, cabeca.largura, c);
+            this.maoNoRosto = oc.maoNoRosto;
+            a.opacidade = Math.min(a.opacidade, oc.opacidades[0]);
+            b.opacidade = Math.min(b.opacidade, oc.opacidades[1]);
             a.angulo = this.pendulos[0].atualizar(a.x, t, cabeca.largura, c.brinco.pendulo);
             b.angulo = this.pendulos[1].atualizar(b.x, t, cabeca.largura, c.brinco.pendulo);
             this.slots.brincoA.atualizar(a, t);
@@ -288,6 +311,9 @@ export class MotorProvador {
     if (sel.pulseira && this.mao) {
       const res = this.mao.detectForVideo(this.video, ts);
       let melhor: { p0: Ponto; p9: Ponto; d: number } | null = null;
+      this.cascosMaos = res.landmarks.map((mao) =>
+        expandir(cascoConvexo(mao.map((l) => ({ x: l.x * w, y: l.y * h }))), c.oclusao.expandirMao),
+      );
       for (const mao of res.landmarks) {
         const p0 = px(mao[0]);
         const p9 = px(mao[9]);
@@ -310,7 +336,8 @@ export class MotorProvador {
     }
 
     let dica: string | null = null;
-    if (sel.colar && t - this.ultimoOmbro > CALIBRACAO.colar.dicaAposMs) dica = DICA_OMBROS;
+    if (sel.brinco && this.maoNoRosto) dica = DICA_MAO;
+    else if (sel.colar && t - this.ultimoOmbro > CALIBRACAO.colar.dicaAposMs) dica = DICA_OMBROS;
     else if (sel.pulseira && t - this.ultimaMao > CALIBRACAO.colar.dicaAposMs) dica = DICA_PULSO;
     if (dica !== this.dicaAtual) {
       this.dicaAtual = dica;
@@ -337,6 +364,15 @@ export class MotorProvador {
         d.beginPath();
         d.arc(p.x, p.y, 5, 0, Math.PI * 2);
         d.fill();
+      }
+      const oval = this.ovalDebug;
+      if (oval.length > 2) {
+        d.strokeStyle = this.valores.calibracao.debug.oval;
+        d.lineWidth = 1.5;
+        d.beginPath();
+        oval.forEach((p, i) => (i ? d.lineTo(p.x, p.y) : d.moveTo(p.x, p.y)));
+        d.closePath();
+        d.stroke();
       }
       const base = this.baseDebug;
       if (base) {

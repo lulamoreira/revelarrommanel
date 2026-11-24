@@ -75,14 +75,12 @@ describe("geometria tridimensional", () => {
   it("lóbulos ficam para fora das laterais e abaixo delas", () => {
     const r = rosto(),
       [a, b] = posesBrincos(base(), 32);
-    expect(a.x).toBeLessThan(r.l234.x);
-    expect(b.x).toBeGreaterThan(r.l454.x);
     expect(a.y).toBeGreaterThan(r.l234.y);
     expect(b.y).toBeGreaterThan(r.l454.y);
-    expect(a.y - r.l234.y).toBeCloseTo(7);
-    expect(b.y - r.l454.y).toBeCloseTo(7);
-    expect(CALIBRACAO.brinco.lobuloBaixo).toBe(0.05);
-    expect(CALIBRACAO.brinco.lobuloFora).toBe(0.02);
+    expect(a.y - r.l234.y).toBeCloseTo(0.13 * (r.l454.x - r.l234.x));
+    expect(b.y - r.l454.y).toBeCloseTo(0.13 * (r.l454.x - r.l234.x));
+    expect(CALIBRACAO.brinco.lobuloBaixo).toBe(0.13);
+    expect(CALIBRACAO.brinco.lobuloFora).toBe(-0.025);
     expect(CALIBRACAO.brinco.lobuloTras).toBe(-0.12);
     expect(a.tamanho).toBeCloseTo(32);
   });
@@ -93,7 +91,7 @@ describe("geometria tridimensional", () => {
   });
   it("transição de visibilidade tem 15 graus", () => {
     expect(CALIBRACAO.brinco.yawSomeFim - CALIBRACAO.brinco.yawSomeInicio).toBe(15);
-    const [a] = posesBrincos(base(22.5), 32);
+    const [a] = posesBrincos(base(32.5), 32);
     expect(a.opacidade).toBeCloseTo(0.5);
   });
   it("brinco não copia roll da cabeça", () => {
@@ -164,11 +162,11 @@ describe("calibração local", () => {
     const antigo = padraoDebug();
     antigo.calibracao.brinco.lobuloBaixo = 0.3;
     const leitura = vi.spyOn(Storage.prototype, "getItem").mockImplementation((chave) =>
-      chave === "revelar-calibracao-3d-v1" ? JSON.stringify(antigo) : null,
+      chave === "revelar-calibracao-3d-v2" ? JSON.stringify(antigo) : null,
     );
     try {
-      expect(CHAVE_CALIBRACAO).toBe("revelar-calibracao-3d-v2");
-      expect(carregarDebug().calibracao.brinco.lobuloBaixo).toBe(0.05);
+      expect(CHAVE_CALIBRACAO).toBe("revelar-calibracao-3d-v3");
+      expect(carregarDebug().calibracao.brinco.lobuloBaixo).toBe(0.13);
     } finally {
       leitura.mockRestore();
     }

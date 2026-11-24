@@ -5,14 +5,14 @@ export const CALIBRACAO = {
   ombrosMm: 380,
   brinco: {
     /** Afasta o furo para fora da lateral da cabeça (fração da largura 3D). */
-    lobuloFora: 0.02,
+    lobuloFora: -0.025,
     /** Desce o furo em relação ao centro 234↔454; positivo = para baixo. */
-    lobuloBaixo: 0.05,
+    lobuloBaixo: 0.13,
     /** Recua o furo em direção à orelha; negativo = atrás do rosto. */
     lobuloTras: -0.12,
     /** O lado afastado da câmera apaga suavemente entre estes ângulos de yaw. */
-    yawSomeInicio: 15,
-    yawSomeFim: 30,
+    yawSomeInicio: 25,
+    yawSomeFim: 40,
     pendulo: { rigidez: 38, amortecimento: 12, resposta: 0.012, limiteGraus: 12 },
   },
   colar: {
@@ -32,11 +32,23 @@ export const CALIBRACAO = {
     dicaAposMs: 1000,
     minCutoff: 0.65,
   },
+  oclusao: {
+    /** Lóbulo ≥ esta fração da largura do rosto para FORA do contorno: brinco visível. */
+    foraRosto: 0.04,
+    /** Lóbulo ≥ esta fração para DENTRO do contorno (ou da mão): brinco escondido. */
+    dentroRosto: 0.02,
+    /** Expansão do casco convexo da mão. */
+    expandirMao: 0.08,
+    /** Mão cobrindo mais que esta fração do rosto esconde os dois brincos. */
+    limiteMaoRosto: 0.2,
+    /** Suavização temporal da opacidade dos brincos. */
+    suavizarMs: 120,
+  },
   pulseira: { paraAntebraco: 0.18 },
   rastreamento: { segurarMs: 300, fadeMs: 250, detecaoFps: 18, desenhoFps: 30 },
   suavizacao: { minCutoff: 1.2, beta: 0.02, dCutoff: 1.0 },
   sombra: { cor: "rgba(40, 20, 50, 0.35)", desfoque: 0.08, deslocY: 0.06 },
-  debug: { eixoX: "#ff4545", eixoY: "#26d978", eixoZ: "#448aff", pontos: "#26d978" },
+  debug: { eixoX: "#ff4545", eixoY: "#26d978", eixoZ: "#448aff", pontos: "#26d978", oval: "#22d3ee" },
 };
 export type Calibracao = typeof CALIBRACAO;
 export const CAMPOS_CALIBRACAO = [

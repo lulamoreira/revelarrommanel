@@ -9,7 +9,7 @@ import { EntradaRealista, mensagemEntrada } from "@/lib/revelar/entrada-realista
 import { avaliarLimites, inicioDoDiaSaoPaulo } from "@/lib/revelar/limites";
 
 const PROMPT =
-  "Esta foto já mostra a pessoa usando as joias nas posições corretas. Torne o resultado fotorrealista: integre iluminação, reflexos metálicos e sombras de contato das joias na pele; quando houver cabelo sobre a orelha, faça o cabelo passar naturalmente na frente do brinco. NÃO altere o rosto, a identidade, a expressão, o tom de pele, as roupas, o fundo ou o enquadramento. NÃO altere o desenho, a cor, o tamanho ou a posição das joias — elas devem permanecer idênticas às imagens de referência anexadas. Não adicione nenhuma outra joia, texto ou elemento.";
+  "Esta foto já mostra a pessoa usando as joias nas posições corretas. Torne o resultado fotorrealista: integre iluminação, reflexos metálicos e sombras de contato das joias na pele; quando houver cabelo sobre a orelha, faça o cabelo passar naturalmente na frente do brinco. NÃO altere o rosto, a identidade, a expressão, o tom de pele, as roupas, o fundo ou o enquadramento. NÃO altere o desenho, a cor, o tamanho ou a posição das joias — elas devem permanecer idênticas às imagens de referência anexadas. Não adicione nenhuma outra joia, texto ou elemento. Exceção: se algum brinco estiver desenhado sobre o rosto, sobre a mão ou em um lugar onde a orelha não está visível, remova esse brinco e reconstrua naturalmente a pele/fundo naquele ponto. Não remova nem altere nenhuma outra joia.";
 
 const json = (corpo: unknown, status = 200) =>
   new Response(JSON.stringify(corpo), {

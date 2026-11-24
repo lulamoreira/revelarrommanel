@@ -15,7 +15,7 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("ajustes finos da calibração", () => {
-  it("soma e subtrai 0.005 no lóbulo e restaura o padrão 0.05", () => {
+  it("soma e subtrai 0.005 no lóbulo e restaura o padrão 0.13", () => {
     const alterado = vi.fn();
     function Painel() {
       const [valores, setValores] = useState(padraoDebug);
@@ -23,9 +23,9 @@ describe("ajustes finos da calibração", () => {
     }
     render(<Painel />);
     fireEvent.click(screen.getByRole("button", { name: "Aumentar lobuloBaixo" }));
-    expect(alterado.mock.lastCall?.[0].calibracao.brinco.lobuloBaixo).toBe(0.055);
+    expect(alterado.mock.lastCall?.[0].calibracao.brinco.lobuloBaixo).toBe(0.135);
     fireEvent.click(screen.getByRole("button", { name: "Diminuir lobuloBaixo" }));
-    expect(alterado.mock.lastCall?.[0].calibracao.brinco.lobuloBaixo).toBe(0.05);
+    expect(alterado.mock.lastCall?.[0].calibracao.brinco.lobuloBaixo).toBe(0.13);
     fireEvent.click(screen.getByRole("button", { name: "Aumentar lobuloBaixo" }));
     fireEvent.click(screen.getByRole("button", { name: "Restaurar padrão" }));
     expect(alterado.mock.lastCall?.[0]).toEqual(padraoDebug());
