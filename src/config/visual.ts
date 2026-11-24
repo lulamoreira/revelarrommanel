@@ -27,3 +27,8 @@ export const POLAROID = {
   /** A marca nunca passa dessa fração da largura da moldura. */
   logoLarguraMax: 0.86,
 } as const;
+
+/** Desliga a câmera se o app ficar em segundo plano por este tempo. */
+export const CAMERA_DESLIGAR_OCULTA_MS = 30000;
+/** Desliga a câmera se a tela de resultado ficar parada (sem toque) por este tempo. */
+export const CAMERA_DESLIGAR_RESULTADO_MS = 180000;

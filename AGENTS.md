@@ -40,3 +40,5 @@ use the editor.
 - The AI "versão realista" goes through `/api/public/versao-realista`, which validates origin, size and UUID, then counts salted device/IP hashes and global usage before AI; local counters are advisory. Why: shared store networks must not consume one customer's allowance.
 - Never store photos, raw IPs or device UUIDs on the server; persist only salted SHA-256 hashes in locked usage records. Why: preserve the privacy promise.
 - Keep estimated generation progress monotonic below completion and learn timings only from successful requests in browser storage. Why: the AI reports no intermediate progress.
+
+- The camera MediaStream is a per-visit singleton in `src/lib/revelar/camera.ts`; screens only detach it, and only `liberarCamera()` (pagehide, long background, idle result) stops tracks. Why: re-requesting on iOS repeats the permission prompt.

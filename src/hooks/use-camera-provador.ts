@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { MotorProvador } from "@/lib/revelar/motor";
+import { cameraViva, obterCamera } from "@/lib/revelar/camera";
 import type { AjustesDebug } from "@/lib/revelar/calibracao-debug";
 export interface CameraProvadorOptions {
   videoRef: RefObject<HTMLVideoElement | null>;
@@ -28,27 +29,44 @@ export function useCameraProvador(options: CameraProvadorOptions): boolean {
     const video = videoRef.current,
       cena = cenaRef.current;
     if (!video || !cena) return;
-    let stream: MediaStream | null = null;
     let cancelado = false;
-    const parar = () => stream?.getTracks().forEach((t) => t.stop());
+    let stream: MediaStream | null = null;
+    // A câmera é compartilhada: aqui nunca damos stop nas tracks, só soltamos o vídeo.
+    const aoTerminar = () => void reconectar();
+    const vincular = (s: MediaStream) => {
+      stream?.getVideoTracks().forEach((t) => t.removeEventListener("ended", aoTerminar));
+      stream = s;
+      s.getVideoTracks().forEach((t) => t.addEventListener("ended", aoTerminar));
+    };
+    let reconectando = false;
+    /** iOS encerra a câmera em segundo plano: pega de novo sem recriar o motor (seleção preservada). */
+    async function reconectar(): Promise<void> {
+      if (cancelado || reconectando || document.visibilityState !== "visible" || cameraViva(stream)) return;
+      reconectando = true;
+      try {
+        const s = await obterCamera();
+        if (cancelado || !video) return;
+        vincular(s);
+        video.srcObject = s;
+        await video.play();
+      } catch (e) {
+        if (!cancelado) console.warn("Falha ao religar a câmera", e);
+      } finally {
+        reconectando = false;
+      }
+    }
+    const aoVisivel = () => {
+      if (document.visibilityState === "visible") void reconectar();
+    };
+    document.addEventListener("visibilitychange", aoVisivel);
     void (async () => {
       try {
-        if (!navigator.mediaDevices?.getUserMedia)
-          throw new DOMException("sem câmera", "NotFoundError");
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
-          audio: false,
-        });
-        if (cancelado) {
-          parar();
-          return;
-        }
-        video.srcObject = stream;
+        const s = await obterCamera();
+        if (cancelado) return;
+        vincular(s);
+        video.srcObject = s;
         await video.play();
-        if (cancelado) {
-          parar();
-          return;
-        }
+        if (cancelado) return;
         const motor = new MotorProvador(video, cena, debugRef.current, {
           aoDica: (v) => atuais.current.aoDica(v),
           aoFps: (v) => { if (atuais.current.debug) atuais.current.aoFps(v); },
@@ -60,7 +78,6 @@ export function useCameraProvador(options: CameraProvadorOptions): boolean {
         motor.iniciar();
         setPronta(true);
       } catch (e) {
-        parar();
         if (cancelado) return;
         const nome = e instanceof DOMException ? e.name : "";
         atuais.current.aoErro(
@@ -70,9 +87,10 @@ export function useCameraProvador(options: CameraProvadorOptions): boolean {
     })();
     return () => {
       cancelado = true;
+      document.removeEventListener("visibilitychange", aoVisivel);
+      stream?.getVideoTracks().forEach((t) => t.removeEventListener("ended", aoTerminar));
       motorRef.current?.parar();
       motorRef.current = null;
-      parar();
       video.srcObject = null;
     };
   }, []);

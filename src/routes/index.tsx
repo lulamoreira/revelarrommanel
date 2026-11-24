@@ -7,6 +7,8 @@ import { Provador, type Captura } from "@/components/revelar/Provador";
 import { Resultado } from "@/components/revelar/Resultado";
 import { ehNavegadorDeApp, lerLoja } from "@/lib/revelar/ambiente";
 import { guardarLoja, lerLojaSessao } from "@/lib/revelar/sessao";
+import { desligarAposInatividade } from "@/lib/revelar/camera";
+import { CAMERA_DESLIGAR_RESULTADO_MS } from "@/config/visual";
 import type { Selecao } from "@/lib/revelar/motor";
 
 export const Route = createFileRoute("/")({
@@ -44,6 +46,13 @@ function Revelar() {
     setDebug(params.get("debug") === "1");
     if (ehNavegadorDeApp(navigator.userAgent)) setTela({ nome: "app" });
   }, []);
+
+  // Resultado parado muito tempo: desliga a câmera (o "Tirar outra" pede de novo).
+  const naTelaResultado = tela.nome === "resultado";
+  useEffect(() => {
+    if (!naTelaResultado) return;
+    return desligarAposInatividade(CAMERA_DESLIGAR_RESULTADO_MS);
+  }, [naTelaResultado]);
 
   return (
     <>
