@@ -35,6 +35,7 @@ use the editor.
 - Use a depth-aware, nose-facing head frame with screen-down Y for ear anchors; stabilize the neck against yaw/roll, validate shoulders, and scale bracelets from the hand. Why: jaw/chin anchors and guessed shoulders drift during head turns.
 - Debug calibration overrides stay browser-local, validated and separate from catalog defaults; preserve PosePeca and One Euro smoothing. Why: live tuning must not change production configuration or export mechanics.
 - Keep camera lifecycle in a browser hook with current callback refs and cleanup after async cancellation. Why: calibration renders must not reopen the camera or leak its tracks.
-- The scene canvas is drawn in un-mirrored camera space and mirrored only via CSS; exports re-mirror in their own canvas so text stays readable. Why: avoids mirrored text and misplaced jewels.
-- The AI "versão realista" goes through the public server route `/api/public/versao-realista`, which enforces origin, size, per-IP-hash and global daily limits in the database before calling AI; client counters are cosmetic. Why: the QR is public and cost must be capped server-side.
-- Never store photos or raw IPs; only salted SHA-256 IP hashes in `uso_versao_realista` (RLS on, no client policies). Why: privacy promise shown to customers.
+- The scene canvas uses unmirrored camera space; mirror only the live preview via CSS, never photo/video exports or AI input. Why: clothing text and jewelry positions must match the original camera image.
+- The AI "versão realista" goes through `/api/public/versao-realista`, which validates origin, size and UUID, then counts salted device/IP hashes and global usage before AI; local counters are advisory. Why: shared store networks must not consume one customer's allowance.
+- Never store photos, raw IPs or device UUIDs on the server; persist only salted SHA-256 hashes in locked usage records. Why: preserve the privacy promise.
+- Keep estimated generation progress monotonic below completion and learn timings only from successful requests in browser storage. Why: the AI reports no intermediate progress.

@@ -315,12 +315,12 @@ export class MotorProvador {
     const ctx = this.ctx;
     ctx.drawImage(this.video, 0, 0, this.cena.width, this.cena.height);
     const sel = this.selecao;
-    if (sel.colar) this.desenharPeca(this.slots.colar, sel.colar, false, t);
+    if (sel.colar) this.desenharPeca(this.slots.colar, sel.colar, t);
     if (sel.brinco) {
-      this.desenharPeca(this.slots.brincoA, sel.brinco, false, t);
-      this.desenharPeca(this.slots.brincoB, sel.brinco, true, t);
+      this.desenharPeca(this.slots.brincoA, sel.brinco, t);
+      this.desenharPeca(this.slots.brincoB, sel.brinco, t);
     }
-    if (sel.pulseira) this.desenharPeca(this.slots.pulseira, sel.pulseira, false, t);
+    if (sel.pulseira) this.desenharPeca(this.slots.pulseira, sel.pulseira, t);
 
     if (this.dbg) {
       const d = this.dbg;
@@ -364,7 +364,7 @@ export class MotorProvador {
     }
   }
 
-  private desenharPeca(slot: Slot, original: Peca, espelhar: boolean, t: number): void {
+  private desenharPeca(slot: Slot, original: Peca, t: number): void {
     const peca = this.pecaAjustada(original);
     slot.passo(t);
     if (!slot.tem || slot.opacidade <= 0) return;
@@ -383,7 +383,6 @@ export class MotorProvador {
     ctx.globalAlpha = slot.opacidade;
     ctx.translate(x, y);
     ctx.rotate(angulo);
-    if (espelhar) ctx.scale(-1, 1);
     ctx.shadowColor = CALIBRACAO.sombra.cor;
     ctx.shadowBlur = Math.max(2, h * CALIBRACAO.sombra.desfoque);
     ctx.shadowOffsetX = 0;

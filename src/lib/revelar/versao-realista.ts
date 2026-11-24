@@ -1,12 +1,19 @@
 /** Cliente da versão realista: monta o envio e interpreta erros. Nunca descarta a foto original. */
 import { MENSAGENS, TAMANHO_MAX_FOTO } from "@/config/custos";
+import { identificadorAparelho } from "./aparelho";
 import type { Peca } from "@/config/catalogo";
 import { blobParaBase64, carregarImagem, polaroidDeImagem } from "./captura";
 
 export type ResultadoRealista = { ok: true; polaroid: Blob } | { ok: false; mensagem: string };
 
-export async function gerarVersaoRealista(base: Blob, pecas: Peca[], loja: string | null): Promise<ResultadoRealista> {
-  if (base.size > TAMANHO_MAX_FOTO) return { ok: false, mensagem: "A foto ficou grande demais. Tire outra, por favor." };
+export async function gerarVersaoRealista(
+  base: Blob,
+  pecas: Peca[],
+  loja: string | null,
+): Promise<ResultadoRealista> {
+  if (pecas.length === 0) return { ok: false, mensagem: MENSAGENS.semJoias };
+  if (base.size > TAMANHO_MAX_FOTO)
+    return { ok: false, mensagem: "A foto ficou grande demais. Tire outra, por favor." };
   try {
     const referencias = await Promise.all(
       pecas.map(async (p) => {
@@ -18,11 +25,17 @@ export async function gerarVersaoRealista(base: Blob, pecas: Peca[], loja: strin
     const resp = await fetch("/api/public/versao-realista", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ foto: await blobParaBase64(base), pecas: referencias, loja }),
+      body: JSON.stringify({
+        foto: await blobParaBase64(base),
+        pecas: referencias,
+        loja,
+        aparelho: identificadorAparelho(),
+      }),
     });
     const corpo = (await resp.json().catch(() => ({}))) as { imagem?: string; erro?: string };
     if (!resp.ok || !corpo.imagem) {
-      if (resp.status === 402 || resp.status === 403) return { ok: false, mensagem: MENSAGENS.indisponivel };
+      if (resp.status === 402 || resp.status === 403)
+        return { ok: false, mensagem: MENSAGENS.indisponivel };
       if (resp.status === 429) return { ok: false, mensagem: corpo.erro ?? MENSAGENS.ocupado };
       return { ok: false, mensagem: corpo.erro ?? MENSAGENS.generico };
     }

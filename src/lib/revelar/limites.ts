@@ -1,10 +1,21 @@
-import { LIMITE_DIARIO_GLOBAL, LIMITE_POR_PESSOA_24H, MENSAGENS } from "@/config/custos";
+import {
+  LIMITE_DIARIO_GLOBAL,
+  LIMITE_POR_APARELHO_24H,
+  LIMITE_POR_IP_24H,
+  MENSAGENS,
+} from "@/config/custos";
 
 export type ResultadoLimite = { ok: true } | { ok: false; mensagem: string };
 
 /** Decide se uma nova geração pode acontecer. Limite individual tem prioridade na mensagem. */
-export function avaliarLimites(usosPessoa24h: number, usosGlobaisHoje: number): ResultadoLimite {
-  if (usosPessoa24h >= LIMITE_POR_PESSOA_24H) return { ok: false, mensagem: MENSAGENS.limitePessoal };
+export function avaliarLimites(
+  usosAparelho24h: number,
+  usosIp24h: number,
+  usosGlobaisHoje: number,
+): ResultadoLimite {
+  if (usosAparelho24h >= LIMITE_POR_APARELHO_24H)
+    return { ok: false, mensagem: MENSAGENS.limitePessoal };
+  if (usosIp24h >= LIMITE_POR_IP_24H) return { ok: false, mensagem: MENSAGENS.ocupado };
   if (usosGlobaisHoje >= LIMITE_DIARIO_GLOBAL) return { ok: false, mensagem: MENSAGENS.ocupado };
   return { ok: true };
 }

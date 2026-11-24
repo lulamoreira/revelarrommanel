@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       uso_versao_realista: {
         Row: {
+          aparelho_hash: string | null
           criado_em: string
           id: string
           ip_hash: string
@@ -23,6 +24,7 @@ export type Database = {
           sucesso: boolean
         }
         Insert: {
+          aparelho_hash?: string | null
           criado_em?: string
           id?: string
           ip_hash: string
@@ -30,6 +32,7 @@ export type Database = {
           sucesso?: boolean
         }
         Update: {
+          aparelho_hash?: string | null
           criado_em?: string
           id?: string
           ip_hash?: string

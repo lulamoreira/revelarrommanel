@@ -1,12 +1,20 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { escolherMimeVideo } from "@/lib/revelar/ambiente";
-import { desenharPolaroid, fontesProntas, medidasPolaroid, prepararLogoDaMoldura } from "@/lib/revelar/captura";
+import {
+  desenharPolaroid,
+  fontesProntas,
+  medidasPolaroid,
+  prepararLogoDaMoldura,
+} from "@/lib/revelar/captura";
 
 const DURACAO_MAX_MS = 10_000;
 const LADO_MAX_VIDEO = 720;
 
 /** Grava vídeo da cena dentro da polaroid (canvas próprio, texto não espelhado). */
-export function useGravacao(cenaRef: RefObject<HTMLCanvasElement | null>, aoTerminar: (blob: Blob, mime: string) => void) {
+export function useGravacao(
+  cenaRef: RefObject<HTMLCanvasElement | null>,
+  aoTerminar: (blob: Blob, mime: string) => void,
+) {
   const [mime, setMime] = useState<string | null>(null);
   const [gravando, setGravando] = useState(false);
   const [progresso, setProgresso] = useState(0);
@@ -21,7 +29,11 @@ export function useGravacao(cenaRef: RefObject<HTMLCanvasElement | null>, aoTerm
   terminarRef.current = aoTerminar;
 
   useEffect(() => {
-    if (typeof MediaRecorder === "undefined" || typeof HTMLCanvasElement.prototype.captureStream !== "function") return;
+    if (
+      typeof MediaRecorder === "undefined" ||
+      typeof HTMLCanvasElement.prototype.captureStream !== "function"
+    )
+      return;
     setMime(escolherMimeVideo((m) => MediaRecorder.isTypeSupported(m)));
     void fontesProntas();
     void prepararLogoDaMoldura().then((l) => {
@@ -33,7 +45,7 @@ export function useGravacao(cenaRef: RefObject<HTMLCanvasElement | null>, aoTerm
     const ctx = ctxRef.current;
     const cena = cenaRef.current;
     if (!ctx || !cena) return;
-    desenharPolaroid(ctx, cena, dimRef.current.w, dimRef.current.h, true, logoRef.current);
+    desenharPolaroid(ctx, cena, dimRef.current.w, dimRef.current.h, logoRef.current);
   }, [cenaRef]);
 
   const parar = useCallback(() => {

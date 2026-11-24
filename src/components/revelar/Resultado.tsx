@@ -1,7 +1,9 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Download, RotateCcw, Share2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { CONCLUSAO_REALISTA_MS, MENSAGENS } from "@/config/custos";
+import { registrarDuracao } from "@/lib/revelar/espera-realista";
 import { nomeArquivo } from "@/lib/revelar/ambiente";
 import { baixar, compartilhar } from "@/lib/revelar/compartilhar";
 import { geracoesRestantes, registrarGeracao } from "@/lib/revelar/sessao";
@@ -24,7 +26,15 @@ export function Resultado({ captura, loja, aoTirarOutra }: ResultadoProps) {
   const [etapa, setEtapa] = useState<Etapa>("inicio");
   const [realista, setRealista] = useState<Blob | null>(null);
   const [verRealista, setVerRealista] = useState(false);
-  const [restantes, setRestantes] = useState(() => (typeof window === "undefined" ? 3 : geracoesRestantes()));
+  const [restantes, setRestantes] = useState(3);
+  const [inicio, setInicio] = useState(0);
+  const [concluido, setConcluido] = useState(false);
+  useEffect(() => {
+    setRestantes(geracoesRestantes());
+    return () => {
+      pedido.current++;
+    };
+  }, []);
   const pedido = useRef(0);
 
   const original = captura.tipo === "foto" ? captura.polaroid : captura.blob;
@@ -35,16 +45,24 @@ export function Resultado({ captura, loja, aoTirarOutra }: ResultadoProps) {
   const gerar = async () => {
     if (captura.tipo !== "foto") return;
     const id = ++pedido.current;
+    const comeco = performance.now();
+    setInicio(comeco);
+    setConcluido(false);
     setEtapa("gerando");
     const r = await gerarVersaoRealista(captura.base, captura.pecas, loja);
+    if (r.ok) registrarDuracao((performance.now() - comeco) / 1000);
     if (id !== pedido.current) return; // a cliente seguiu sem esperar
-    setEtapa("inicio");
     if (r.ok) {
+      setConcluido(true);
+      await new Promise<void>((resolve) => window.setTimeout(resolve, CONCLUSAO_REALISTA_MS));
+      if (id !== pedido.current) return;
+      setEtapa("inicio");
       registrarGeracao();
       setRestantes(geracoesRestantes());
       setRealista(r.polaroid);
       setVerRealista(true);
     } else {
+      setEtapa("inicio");
       toast.error(r.mensagem);
     }
   };
@@ -59,7 +77,11 @@ export function Resultado({ captura, loja, aoTirarOutra }: ResultadoProps) {
       <Logo />
       <div className="mx-auto mt-5 w-full max-w-sm">
         {realista && (
-          <div role="radiogroup" aria-label="Versão" className="mb-3 grid grid-cols-2 rounded-full bg-card p-1 shadow-suave">
+          <div
+            role="radiogroup"
+            aria-label="Versão"
+            className="mb-3 grid grid-cols-2 rounded-full bg-card p-1 shadow-suave"
+          >
             {(["Original", "Realista"] as const).map((r) => {
               const ativo = (r === "Realista") === verRealista;
               return (
@@ -68,7 +90,10 @@ export function Resultado({ captura, loja, aoTirarOutra }: ResultadoProps) {
                   role="radio"
                   aria-checked={ativo}
                   onClick={() => setVerRealista(r === "Realista")}
-                  className={cn("rounded-full py-2 text-sm font-medium transition-colors", ativo ? "bg-primary text-primary-foreground" : "text-muted-foreground")}
+                  className={cn(
+                    "rounded-full py-2 text-sm font-medium transition-colors",
+                    ativo ? "bg-primary text-primary-foreground" : "text-muted-foreground",
+                  )}
                 >
                   {r}
                 </button>
@@ -86,27 +111,54 @@ export function Resultado({ captura, loja, aoTirarOutra }: ResultadoProps) {
         </div>
         {captura.pecas.length > 0 && (
           <p className="mt-4 text-center text-sm text-muted-foreground">
-            Peças: <span className="font-medium text-foreground">{captura.pecas.map((p) => p.nome).join(" · ")}</span>
+            Peças:{" "}
+            <span className="font-medium text-foreground">
+              {captura.pecas.map((p) => p.nome).join(" · ")}
+            </span>
           </p>
         )}
 
         <div className="mt-5 space-y-3">
-          {captura.tipo === "foto" && etapa === "inicio" && !realista && (
-            <Button size="lg" className="h-14 w-full rounded-full text-base shadow-suave" disabled={restantes <= 0} onClick={() => setEtapa("consentimento")}>
-              <Sparkles className="h-5 w-5" aria-hidden /> Gerar versão realista
-            </Button>
-          )}
+          {captura.tipo === "foto" &&
+            captura.pecas.length > 0 &&
+            etapa === "inicio" &&
+            !realista && (
+              <Button
+                size="lg"
+                className="h-14 w-full rounded-full text-base shadow-suave"
+                onClick={() => setEtapa("consentimento")}
+              >
+                <Sparkles className="h-5 w-5" aria-hidden /> Gerar versão realista
+              </Button>
+            )}
           {captura.tipo === "foto" && restantes <= 0 && !realista && (
-            <p className="text-center text-xs text-muted-foreground">Você já gerou suas 3 versões realistas hoje</p>
+            <p className="text-center text-xs text-muted-foreground">
+              Você já gerou suas 3 versões realistas hoje
+            </p>
           )}
-          {etapa === "consentimento" && <Consentimento aoGerar={() => void gerar()} aoCancelar={() => setEtapa("inicio")} />}
-          {etapa === "gerando" && <Gerando aoContinuarSem={continuarSem} />}
+          {captura.tipo === "foto" && captura.pecas.length === 0 && (
+            <p className="text-center text-sm text-muted-foreground">{MENSAGENS.semJoias}</p>
+          )}
+          {etapa === "consentimento" && (
+            <Consentimento aoGerar={() => void gerar()} aoCancelar={() => setEtapa("inicio")} />
+          )}
+          {etapa === "gerando" && (
+            <Gerando inicio={inicio} concluido={concluido} aoContinuarSem={continuarSem} />
+          )}
 
           <div className="grid grid-cols-2 gap-3">
-            <Button variant="secondary" className="rounded-full" onClick={() => baixar(atual, nomeArquivo(new Date(), ext))}>
+            <Button
+              variant="secondary"
+              className="rounded-full"
+              onClick={() => baixar(atual, nomeArquivo(new Date(), ext))}
+            >
               <Download className="h-4 w-4" aria-hidden /> Baixar
             </Button>
-            <Button variant="secondary" className="rounded-full" onClick={() => void compartilhar(atual, nomeArquivo(new Date(), ext))}>
+            <Button
+              variant="secondary"
+              className="rounded-full"
+              onClick={() => void compartilhar(atual, nomeArquivo(new Date(), ext))}
+            >
               <Share2 className="h-4 w-4" aria-hidden /> Compartilhar
             </Button>
           </div>

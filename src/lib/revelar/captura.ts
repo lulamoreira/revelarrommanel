@@ -16,16 +16,14 @@ export async function fontesProntas(): Promise<void> {
   }
 }
 
-/** Copia a cena (espaço da câmera) espelhada, como a cliente via, limitada a 1280 px. */
-export function fotoEspelhada(cena: HTMLCanvasElement): HTMLCanvasElement {
+/** Copia a cena sem espelhar, no espaço original da câmera, limitada a 1280 px. */
+export function fotoNaoEspelhada(cena: HTMLCanvasElement): HTMLCanvasElement {
   const escala = Math.min(1, LADO_MAX / Math.max(cena.width, cena.height));
   const c = document.createElement("canvas");
   c.width = Math.round(cena.width * escala);
   c.height = Math.round(cena.height * escala);
   const ctx = c.getContext("2d");
   if (!ctx) throw new Error("Canvas indisponível");
-  ctx.translate(c.width, 0);
-  ctx.scale(-1, 1);
   ctx.drawImage(cena, 0, 0, c.width, c.height);
   return c;
 }
@@ -62,45 +60,54 @@ export function desenharPolaroid(
   fonte: CanvasImageSource,
   w: number,
   h: number,
-  espelhar = false,
   logo?: HTMLImageElement | null,
 ): void {
   const m = medidasPolaroid(w, h);
   ctx.fillStyle = VISUAL_CANVAS.moldura;
   ctx.fillRect(0, 0, m.largura, m.altura);
-  if (espelhar) {
-    ctx.save();
-    ctx.translate(m.borda + w, m.borda);
-    ctx.scale(-1, 1);
-    ctx.drawImage(fonte, 0, 0, w, h);
-    ctx.restore();
-  } else {
-    ctx.drawImage(fonte, m.borda, m.borda, w, h);
-  }
+  ctx.drawImage(fonte, m.borda, m.borda, w, h);
   const baseTopo = m.borda + h;
   ctx.fillStyle = VISUAL_CANVAS.texto;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.font = `${Math.round(m.base * POLAROID.fraseTamanho)}px "${VISUAL_CANVAS.fonteManuscrita}", cursive`;
-  ctx.fillText(VISUAL_CANVAS.fraseMoldura, m.largura / 2, baseTopo + m.base * POLAROID.frasePosicao);
+  ctx.fillText(
+    VISUAL_CANVAS.fraseMoldura,
+    m.largura / 2,
+    baseTopo + m.base * POLAROID.frasePosicao,
+  );
 
   if (logo && logo.naturalWidth > 0 && logo.naturalHeight > 0) {
     const proporcao = logo.naturalWidth / logo.naturalHeight;
-    const alturaLimite = m.largura * POLAROID.logoLarguraMax / proporcao;
+    const alturaLimite = (m.largura * POLAROID.logoLarguraMax) / proporcao;
     const escala = Math.min(1, alturaLimite / (m.base * POLAROID.logoAltura));
     const alt = Math.round(m.base * POLAROID.logoAltura * escala);
     const larg = Math.round(alt * proporcao);
-    ctx.drawImage(logo, (m.largura - larg) / 2, baseTopo + m.base * POLAROID.logoPosicao - alt / 2, larg, alt);
+    ctx.drawImage(
+      logo,
+      (m.largura - larg) / 2,
+      baseTopo + m.base * POLAROID.logoPosicao - alt / 2,
+      larg,
+      alt,
+    );
   }
 }
 
-export function canvasParaBlob(c: HTMLCanvasElement, tipo = "image/jpeg", qualidade = 0.92): Promise<Blob> {
+export function canvasParaBlob(
+  c: HTMLCanvasElement,
+  tipo = "image/jpeg",
+  qualidade = 0.92,
+): Promise<Blob> {
   return new Promise((resolve, reject) =>
     c.toBlob((b) => (b ? resolve(b) : reject(new Error("Falha ao gerar imagem"))), tipo, qualidade),
   );
 }
 
-export async function polaroidDeImagem(fonte: CanvasImageSource, w: number, h: number): Promise<Blob> {
+export async function polaroidDeImagem(
+  fonte: CanvasImageSource,
+  w: number,
+  h: number,
+): Promise<Blob> {
   await fontesProntas();
   const logo = await prepararLogoDaMoldura();
   const escala = Math.min(1, LADO_MAX / Math.max(w, h));
@@ -112,7 +119,7 @@ export async function polaroidDeImagem(fonte: CanvasImageSource, w: number, h: n
   c.height = m.altura;
   const ctx = c.getContext("2d");
   if (!ctx) throw new Error("Canvas indisponível");
-  desenharPolaroid(ctx, fonte, iw, ih, false, logo);
+  desenharPolaroid(ctx, fonte, iw, ih, logo);
   return canvasParaBlob(c);
 }
 

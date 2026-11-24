@@ -10,3 +10,7 @@
 - [x] Geometria 3D, gravidade dos brincos, colar estabilizado e escala da mão
 - [x] Painel de calibração ao vivo com persistência e cópia
 - [x] Testes sintéticos 3D e verificação no navegador (rosto simulado; aparelho real pendente de validação pela loja)
+- [x] Espera realista com segundos, progresso estimado e média local
+- [x] Foto/vídeo e envio realista não espelhados
+- [x] Validação sem joias e limites 3/aparelho, 40/IP, 300/dia
+- [x] Testes e verificação dos três ajustes (53 testes, câmera simulada, resposta de IA simulada)

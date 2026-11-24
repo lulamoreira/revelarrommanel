@@ -5,7 +5,7 @@ import type { Peca, TipoPeca } from "@/config/catalogo";
 import { type MotorProvador, type Selecao } from "@/lib/revelar/motor";
 import {
   canvasParaBlob,
-  fotoEspelhada,
+  fotoNaoEspelhada,
   fontesProntas,
   polaroidDeImagem,
 } from "@/lib/revelar/captura";
@@ -114,7 +114,7 @@ export function Provador({ debug, selecaoInicial, aoCapturar, aoErroCamera }: Pr
     if (!cena || !cena.width) return;
     setFlash((f) => f + 1);
     await fontesProntas();
-    const foto = fotoEspelhada(cena);
+    const foto = fotoNaoEspelhada(cena);
     const base = await canvasParaBlob(foto);
     const polaroid = await polaroidDeImagem(foto, foto.width, foto.height);
     aoCapturar({ tipo: "foto", base, polaroid, pecas: pecasAtuais() }, selecao);

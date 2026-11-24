@@ -172,15 +172,26 @@
 }
 
 @keyframes revelar-brilho {
-  0%, 100% { opacity: 0.4; transform: scale(0.9); }
-  50% { opacity: 1; transform: scale(1.1); }
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
 }
 @utility animar-brilho {
   animation: revelar-brilho 1.4s ease-in-out infinite;
 }
 @keyframes revelar-flash {
-  from { opacity: 0.95; }
-  to { opacity: 0; }
+  from {
+    opacity: 0.95;
+  }
+  to {
+    opacity: 0;
+  }
 }
 @utility animar-flash {
   animation: revelar-flash 0.35s ease-out forwards;
@@ -188,4 +199,43 @@
 /* Sombra discreta para a marca continuar legível sobre a imagem da câmera. */
 @utility logo-sobre-camara {
   filter: drop-shadow(0 1px 10px oklch(0.2 0.04 304 / 55%));
+}
+
+.progresso-realista {
+  appearance: none;
+  border: 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--muted);
+  color: var(--primary);
+}
+.progresso-realista::-webkit-progress-bar {
+  background: var(--muted);
+}
+.progresso-realista::-webkit-progress-value {
+  background: var(--primary);
+  transition: width 0.3s linear;
+}
+.progresso-realista::-moz-progress-bar {
+  background: var(--primary);
+  transition: width 0.3s linear;
+}
+@keyframes mensagem-realista-entrada {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.mensagem-realista {
+  animation: mensagem-realista-entrada 0.35s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mensagem-realista {
+    animation: none;
+  }
+  .progresso-realista::-webkit-progress-value {
+    transition: none;
+  }
 }

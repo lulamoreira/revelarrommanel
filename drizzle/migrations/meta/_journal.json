@@ -8,6 +8,13 @@
       "when": 1795546785091,
       "tag": "0000_uso_versao_realista",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795549314360,
+      "tag": "0001_add_aparelho_hash_realista",
+      "breakpoints": true
     }
   ]
 }

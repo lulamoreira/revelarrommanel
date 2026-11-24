@@ -54,12 +54,18 @@ describe("ambiente", () => {
 
 describe("limites da versão realista", () => {
   it("bloqueia a 4ª geração da mesma pessoa em 24 h", () => {
-    expect(avaliarLimites(2, 0).ok).toBe(true);
-    expect(avaliarLimites(3, 0)).toEqual({ ok: false, mensagem: "Você já gerou suas 3 versões realistas hoje" });
+    expect(avaliarLimites(2, 0, 0).ok).toBe(true);
+    expect(avaliarLimites(3, 0, 0)).toEqual({
+      ok: false,
+      mensagem: "Você já gerou suas 3 versões realistas hoje",
+    });
   });
   it("bloqueia ao atingir o teto global diário de 300", () => {
     expect(LIMITE_DIARIO_GLOBAL).toBe(300);
-    expect(avaliarLimites(0, 300)).toEqual({ ok: false, mensagem: "Muitas pessoas usando agora, tente em instantes" });
+    expect(avaliarLimites(0, 0, 300)).toEqual({
+      ok: false,
+      mensagem: "Muitas pessoas usando agora, tente em instantes",
+    });
   });
   it("dia começa à meia-noite de São Paulo", () => {
     expect(inicioDoDiaSaoPaulo(new Date("2026-03-10T02:00:00Z"))).toBe("2026-03-09T03:00:00.000Z");
