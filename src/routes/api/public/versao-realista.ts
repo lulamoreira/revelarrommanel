@@ -6,7 +6,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { MENSAGENS, MODELO_VERSAO_REALISTA, TAMANHO_MAX_FOTO } from "@/config/custos";
 import { EntradaRealista, mensagemEntrada } from "@/lib/revelar/entrada-realista";
-import { avaliarLimites, inicioDoDiaSaoPaulo } from "@/lib/revelar/limites";
+import { aparelhoDeTeste, avaliarLimites, inicioDoDiaSaoPaulo } from "@/lib/revelar/limites";
 
 const PROMPT =
   "Esta foto já mostra a pessoa usando as joias nas posições corretas. Torne o resultado fotorrealista: integre iluminação, reflexos metálicos e sombras de contato das joias na pele; quando houver cabelo sobre a orelha, faça o cabelo passar naturalmente na frente do brinco. NÃO altere o rosto, a identidade, a expressão, o tom de pele, as roupas, o fundo ou o enquadramento. NÃO altere o desenho, a cor, o tamanho ou a posição das joias — elas devem permanecer idênticas às imagens de referência anexadas. Não adicione nenhuma outra joia, texto ou elemento. Exceção: se algum brinco estiver desenhado sobre o rosto, sobre a mão ou em um lugar onde a orelha não está visível, remova esse brinco e reconstrua naturalmente a pele/fundo naquele ponto. Não remova nem altere nenhuma outra joia.";
@@ -96,6 +96,8 @@ export const Route = createFileRoute("/api/public/versao-realista")({
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const ipHash = await sha256Hex(`${sal}:${ipDoCliente(request)}`);
         const aparelhoHash = await sha256Hex(`${sal}:aparelho:${entrada.aparelho}`);
+        // Aparelhos de teste (secret APARELHOS_TESTE): sem limite por aparelho/IP, mas com teto global.
+        const teste = aparelhoDeTeste(entrada.aparelho, process.env["APARELHOS_TESTE"]);
         const agora = new Date();
         const ha24h = new Date(agora.getTime() - 24 * 3600 * 1000).toISOString();
         const ha3min = new Date(agora.getTime() - 3 * 60 * 1000).toISOString();
@@ -117,6 +119,7 @@ export const Route = createFileRoute("/api/public/versao-realista")({
           supabaseAdmin
             .from("uso_versao_realista")
             .select("id", { count: "exact", head: true })
+            .eq("teste", false)
             .gte("criado_em", inicioDoDiaSaoPaulo(agora))
             .or(`sucesso.eq.true,criado_em.gte.${ha3min}`),
         ]);
@@ -127,7 +130,9 @@ export const Route = createFileRoute("/api/public/versao-realista")({
           );
           return json({ erro: MENSAGENS.indisponivel }, 503);
         }
-        const limite = avaliarLimites(aparelho.count ?? 0, ip.count ?? 0, global.count ?? 0);
+        const limite = teste
+          ? avaliarLimites(0, 0, global.count ?? 0)
+          : avaliarLimites(aparelho.count ?? 0, ip.count ?? 0, global.count ?? 0);
         if (!limite.ok) return json({ erro: limite.mensagem }, 429);
 
         const { data: registro, error: erroRegistro } = await supabaseAdmin
@@ -137,6 +142,7 @@ export const Route = createFileRoute("/api/public/versao-realista")({
             aparelho_hash: aparelhoHash,
             loja: entrada.loja ?? null,
             sucesso: false,
+            teste,
           })
           .select("id")
           .single();
@@ -183,7 +189,7 @@ export const Route = createFileRoute("/api/public/versao-realista")({
           .from("uso_versao_realista")
           .update({ sucesso: true })
           .eq("id", registro.id);
-        return json({ imagem: `data:image/png;base64,${b64}` });
+        return json(teste ? { imagem: `data:image/png;base64,${b64}`, teste: true } : { imagem: `data:image/png;base64,${b64}` });
       },
     },
   },

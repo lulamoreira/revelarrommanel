@@ -22,6 +22,7 @@ export type Database = {
           ip_hash: string
           loja: string | null
           sucesso: boolean
+          teste: boolean
         }
         Insert: {
           aparelho_hash?: string | null
@@ -30,6 +31,7 @@ export type Database = {
           ip_hash: string
           loja?: string | null
           sucesso?: boolean
+          teste?: boolean
         }
         Update: {
           aparelho_hash?: string | null
@@ -38,6 +40,7 @@ export type Database = {
           ip_hash?: string
           loja?: string | null
           sucesso?: boolean
+          teste?: boolean
         }
         Relationships: []
       }

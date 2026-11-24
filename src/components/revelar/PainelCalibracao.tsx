@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { CAMPOS_CALIBRACAO } from "@/config/calibracao";
 import type { Peca } from "@/config/catalogo";
 import { AjusteCalibracao } from "./AjusteCalibracao";
+import { identificadorAparelho } from "@/lib/revelar/aparelho";
 import {
   ajusteDaPeca, alterarCampo, CAMPOS_AJUSTE, padraoDebug,
   valoresParaCopiar, type AjustesDebug,
@@ -21,6 +22,15 @@ export function PainelCalibracao({ valores, pecas, aoAlterar, aoFechar }: Painel
   const [mensagem, setMensagem] = useState("");
   const peca = pecas.find((p) => p.id === id) ?? pecas[0];
   const ajuste = peca ? ajusteDaPeca(peca, valores) : null;
+  const [idAparelho] = useState(() => identificadorAparelho());
+  const copiarId = async () => {
+    try {
+      await navigator.clipboard.writeText(idAparelho);
+      setMensagem("ID do aparelho copiado");
+    } catch {
+      setMensagem("Não foi possível copiar. Tente novamente.");
+    }
+  };
   const copiar = async () => {
     try {
       await navigator.clipboard.writeText(valoresParaCopiar(valores));
@@ -59,6 +69,11 @@ export function PainelCalibracao({ valores, pecas, aoAlterar, aoFechar }: Painel
           <Button size="sm" variant="outline" onClick={() => { aoAlterar(padraoDebug()); setMensagem("Padrão restaurado"); }}><RotateCcw size={14} aria-hidden /> Restaurar padrão</Button>
         </div>
         {mensagem && <p role="status" className="text-xs">{mensagem}</p>}
+        <div className="border-t border-border pt-3 text-xs text-muted-foreground">
+          <p>ID deste aparelho</p>
+          <p className="mt-1 break-all font-mono text-foreground">{idAparelho}</p>
+          <Button size="sm" variant="outline" className="mt-2" onClick={() => void copiarId()}><Copy size={14} aria-hidden /> Copiar ID do aparelho</Button>
+        </div>
       </div>
     </aside>
   );

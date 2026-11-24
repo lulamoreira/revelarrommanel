@@ -27,3 +27,10 @@ export function inicioDoDiaSaoPaulo(agora: Date): string {
   const meiaNoite = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate());
   return new Date(meiaNoite + OFFSET).toISOString();
 }
+
+/** true se o UUID do aparelho está na lista (separada por vírgula) do secret APARELHOS_TESTE. */
+export function aparelhoDeTeste(aparelho: string, lista: string | undefined): boolean {
+  if (!lista) return false;
+  const alvo = aparelho.trim().toLowerCase();
+  return lista.split(",").some((id) => id.trim().toLowerCase() === alvo && alvo.length > 0);
+}

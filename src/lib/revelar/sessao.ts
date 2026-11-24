@@ -21,4 +21,10 @@ export const geracoesUsadas = (): number =>
 export const registrarGeracao = (): void =>
   seguro(() => sessionStorage.setItem(CHAVE_GERACOES, String(geracoesUsadas() + 1)), undefined);
 export const geracoesRestantes = (): number =>
-  Math.max(0, LIMITE_POR_APARELHO_24H - geracoesUsadas());
+  aparelhoTesteSessao() ? Infinity : Math.max(0, LIMITE_POR_APARELHO_24H - geracoesUsadas());
+const CHAVE_TESTE = "revelar:aparelho-teste";
+/** Só aviso visual: o servidor confirmou que este aparelho é de teste. */
+export const marcarAparelhoTeste = (): void =>
+  seguro(() => sessionStorage.setItem(CHAVE_TESTE, "1"), undefined);
+export const aparelhoTesteSessao = (): boolean =>
+  seguro(() => sessionStorage.getItem(CHAVE_TESTE) === "1", false);

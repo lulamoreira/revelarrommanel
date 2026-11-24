@@ -1,6 +1,7 @@
 /** Cliente da versão realista: monta o envio e interpreta erros. Nunca descarta a foto original. */
 import { MENSAGENS, TAMANHO_MAX_FOTO } from "@/config/custos";
 import { identificadorAparelho } from "./aparelho";
+import { marcarAparelhoTeste } from "./sessao";
 import type { Peca } from "@/config/catalogo";
 import { blobParaBase64, carregarImagem, polaroidDeImagem } from "./captura";
 
@@ -32,13 +33,14 @@ export async function gerarVersaoRealista(
         aparelho: identificadorAparelho(),
       }),
     });
-    const corpo = (await resp.json().catch(() => ({}))) as { imagem?: string; erro?: string };
+    const corpo = (await resp.json().catch(() => ({}))) as { imagem?: string; erro?: string; teste?: boolean };
     if (!resp.ok || !corpo.imagem) {
       if (resp.status === 402 || resp.status === 403)
         return { ok: false, mensagem: MENSAGENS.indisponivel };
       if (resp.status === 429) return { ok: false, mensagem: corpo.erro ?? MENSAGENS.ocupado };
       return { ok: false, mensagem: corpo.erro ?? MENSAGENS.generico };
     }
+    if (corpo.teste === true) marcarAparelhoTeste();
     const img = await carregarImagem(corpo.imagem);
     return { ok: true, polaroid: await polaroidDeImagem(img, img.naturalWidth, img.naturalHeight) };
   } catch (e) {

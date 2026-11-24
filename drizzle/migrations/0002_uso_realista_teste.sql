@@ -1,0 +1,1 @@
+ALTER TABLE public.uso_versao_realista ADD COLUMN IF NOT EXISTS teste boolean NOT NULL DEFAULT false;

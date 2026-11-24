@@ -15,6 +15,13 @@
       "when": 1795549314360,
       "tag": "0001_add_aparelho_hash_realista",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795551741354,
+      "tag": "0002_uso_realista_teste",
+      "breakpoints": true
     }
   ]
 }
