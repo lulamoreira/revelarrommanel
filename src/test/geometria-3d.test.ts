@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   baseCabeca,
   basePescoço,
@@ -19,6 +19,8 @@ import {
   padraoDebug,
   alterarCampo,
   valoresParaCopiar,
+  carregarDebug,
+  CHAVE_CALIBRACAO,
 } from "@/lib/revelar/calibracao-debug";
 import { CAMPOS_CALIBRACAO } from "@/config/calibracao";
 
@@ -77,7 +79,11 @@ describe("geometria tridimensional", () => {
     expect(b.x).toBeGreaterThan(r.l454.x);
     expect(a.y).toBeGreaterThan(r.l234.y);
     expect(b.y).toBeGreaterThan(r.l454.y);
-    expect(a.y - r.l234.y).toBeCloseTo(42);
+    expect(a.y - r.l234.y).toBeCloseTo(7);
+    expect(b.y - r.l454.y).toBeCloseTo(7);
+    expect(CALIBRACAO.brinco.lobuloBaixo).toBe(0.05);
+    expect(CALIBRACAO.brinco.lobuloFora).toBe(0.02);
+    expect(CALIBRACAO.brinco.lobuloTras).toBe(-0.12);
     expect(a.tamanho).toBeCloseTo(32);
   });
   it.each([-40, 40])("oculta só o lóbulo que recua ao virar %s°", (g) => {
@@ -154,16 +160,39 @@ describe("pêndulo", () => {
   });
 });
 describe("calibração local", () => {
+  it("ignora a calibração v1 dos aparelhos já testados", () => {
+    const antigo = padraoDebug();
+    antigo.calibracao.brinco.lobuloBaixo = 0.3;
+    const leitura = vi.spyOn(Storage.prototype, "getItem").mockImplementation((chave) =>
+      chave === "revelar-calibracao-3d-v1" ? JSON.stringify(antigo) : null,
+    );
+    try {
+      expect(CHAVE_CALIBRACAO).toBe("revelar-calibracao-3d-v2");
+      expect(carregarDebug().calibracao.brinco.lobuloBaixo).toBe(0.05);
+    } finally {
+      leitura.mockRestore();
+    }
+  });
+  it("permite ajustar o lóbulo de -0.1 até 0.3 em passos de 0.005", () => {
+    const f = CAMPOS_CALIBRACAO.find((f) => f.chave === "lobuloBaixo");
+    if (!f) throw new Error("Campo ausente");
+    expect(f).toMatchObject({ min: -0.1, max: 0.3, passo: 0.005 });
+    const c = padraoDebug().calibracao;
+    alterarCampo(c, f, -1);
+    expect(c.brinco.lobuloBaixo).toBe(-0.1);
+    alterarCampo(c, f, 1);
+    expect(c.brinco.lobuloBaixo).toBe(0.3);
+  });
   it("JSON inválido não derruba o provador", () => {
     expect(decodificarDebug("{")).toEqual(padraoDebug());
   });
   it("preserva valores e ajustes no objeto para copiar", () => {
     const v = padraoDebug();
-    v.calibracao.brinco.lobuloBaixo = 0.4;
+    v.calibracao.brinco.lobuloBaixo = 0.2;
     v.pecas["teste"] = { escala: 1.2, dx: 2, dy: -3 };
     expect(decodificarDebug(JSON.stringify(v))).toEqual(v);
     const copia = JSON.parse(valoresParaCopiar(v));
-    expect(copia.calibracao.brinco.lobuloBaixo).toBe(0.4);
+    expect(copia.calibracao.brinco.lobuloBaixo).toBe(0.2);
     expect(copia.catalogo).toEqual([{ id: "teste", ajuste: { escala: 1.2, dx: 2, dy: -3 } }]);
   });
   it("impede intervalo de ocultação invertido", () => {

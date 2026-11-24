@@ -11,7 +11,7 @@ export interface AjustesDebug {
   calibracao: Calibracao;
   pecas: Record<string, AjusteDebug>;
 }
-export const CHAVE_CALIBRACAO = "revelar-calibracao-3d-v1";
+export const CHAVE_CALIBRACAO = "revelar-calibracao-3d-v2";
 export const padraoDebug = (): AjustesDebug => ({
   calibracao: structuredClone(CALIBRACAO),
   pecas: {},

@@ -7,7 +7,7 @@ export const CALIBRACAO = {
     /** Afasta o furo para fora da lateral da cabeça (fração da largura 3D). */
     lobuloFora: 0.02,
     /** Desce o furo em relação ao centro 234↔454; positivo = para baixo. */
-    lobuloBaixo: 0.3,
+    lobuloBaixo: 0.05,
     /** Recua o furo em direção à orelha; negativo = atrás do rosto. */
     lobuloTras: -0.12,
     /** O lado afastado da câmera apaga suavemente entre estes ângulos de yaw. */
@@ -41,7 +41,7 @@ export const CALIBRACAO = {
 export type Calibracao = typeof CALIBRACAO;
 export const CAMPOS_CALIBRACAO = [
   { grupo: "brinco", chave: "lobuloFora", min: -0.1, max: 0.2, passo: 0.005 },
-  { grupo: "brinco", chave: "lobuloBaixo", min: 0, max: 0.6, passo: 0.005 },
+  { grupo: "brinco", chave: "lobuloBaixo", min: -0.1, max: 0.3, passo: 0.005 },
   { grupo: "brinco", chave: "lobuloTras", min: -0.4, max: 0.2, passo: 0.005 },
   { grupo: "brinco", chave: "yawSomeInicio", min: 0, max: 45, passo: 1 },
   { grupo: "brinco", chave: "yawSomeFim", min: 1, max: 60, passo: 1 },
