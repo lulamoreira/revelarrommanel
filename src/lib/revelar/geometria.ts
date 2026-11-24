@@ -176,15 +176,61 @@ export function poseColar3D(
       );
   return { ...ponto, tamanho, angulo, opacidade: 1 };
 }
-export function posePulseira(p0: Ponto, p9: Ponto, _pxmm: number | null, mm: number): PosePeca {
-  const d = dist(p0, p9) || 1,
-    ux = (p0.x - p9.x) / d,
-    uy = (p0.y - p9.y) / d;
+export interface MaoPulso {
+  p0: Ponto;
+  p5: Ponto;
+  p9: Ponto;
+  p17: Ponto;
+}
+export interface Braco {
+  cotovelo: Ponto;
+  pulso: Ponto;
+}
+/**
+ * Pulseira como anel em volta do pulso. tamanho = raio maior R (perpendicular ao antebraço);
+ * angulo = direção do eixo maior n = (−a.y, a.x), onde a aponta do punho para o cotovelo.
+ * O tamanho vem da largura do pulso (dist P5–P17), não de medida_mm.
+ */
+export function posePulseira(m: MaoPulso, braco: Braco | null, c: Calibracao = CALIBRACAO): PosePeca {
+  const d = dist(m.p0, m.p9) || 1;
+  let ax = (m.p0.x - m.p9.x) / d,
+    ay = (m.p0.y - m.p9.y) / d;
+  if (braco) {
+    const db = dist(braco.cotovelo, braco.pulso);
+    if (db > 1) {
+      ax = (braco.cotovelo.x - braco.pulso.x) / db;
+      ay = (braco.cotovelo.y - braco.pulso.y) / db;
+    }
+  }
+  const p = c.pulseira;
   return {
-    x: p0.x + ux * CALIBRACAO.pulseira.paraAntebraco * d,
-    y: p0.y + uy * CALIBRACAO.pulseira.paraAntebraco * d,
-    tamanho: mm * pxPorMmMao(p0, p9),
-    angulo: Math.atan2(-uy, -ux) + Math.PI / 2,
+    x: m.p0.x + ax * p.paraAntebraco * d,
+    y: m.p0.y + ay * p.paraAntebraco * d,
+    tamanho: (dist(m.p5, m.p17) * p.larguraPulsoFator * p.folga) / 2,
+    angulo: Math.atan2(ax, -ay),
     opacidade: 1,
   };
+}
+/** Vetores do anel a partir da pose: n = eixo maior, a = sentido do cotovelo. */
+export function eixosAnel(angulo: number): { n: Ponto; a: Ponto } {
+  const n = { x: Math.cos(angulo), y: Math.sin(angulo) };
+  return { n, a: { x: n.y, y: -n.x } };
+}
+export const aberturaAnel = (c: Calibracao = CALIBRACAO): number => clamp(c.pulseira.abertura, 0.15, 0.5);
+/**
+ * Opacidade de um ponto do anel pela posição v ao longo do antebraço (em raios menores;
+ * v > 0 = lado do cotovelo = arco da frente, salvo inverterFrente). Degradê na linha de corte.
+ */
+export function alfaAnel(v: number, c: Calibracao = CALIBRACAO): number {
+  const p = c.pulseira;
+  const lado = p.inverterFrente ? -v : v;
+  const g = Math.max(1e-6, p.degradeCorte);
+  const t = clamp((lado + g) / (2 * g), 0, 1);
+  return p.opacidadeTras + (1 - p.opacidadeTras) * t;
+}
+/** Mão duvidosa (punho fechado, mão no rosto): score baixo ou largura saltando entre detecções. */
+export function maoConfiavel(score: number, largura: number, anterior: number | null, c: Calibracao = CALIBRACAO): boolean {
+  if (!(score >= c.pulseira.scoreMin)) return false;
+  if (anterior && anterior > 0 && Math.abs(largura / anterior - 1) > c.pulseira.variacaoMax) return false;
+  return true;
 }

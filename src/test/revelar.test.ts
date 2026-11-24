@@ -17,9 +17,9 @@ describe("escala real", () => {
     expect(yawNariz({ x: 50, y: 0 }, { x: 0, y: 0 }, { x: 100, y: 0 })).toBe(0.5);
   });
   it("pulseira fica do lado do antebraço e horizontal com mão para cima", () => {
-    const p = posePulseira({ x: 100, y: 200 }, { x: 100, y: 100 }, null, 70);
+    const p = posePulseira({ p0: { x: 100, y: 200 }, p5: { x: 60, y: 120 }, p9: { x: 100, y: 100 }, p17: { x: 140, y: 120 } }, null);
     expect(p.y).toBeGreaterThan(200);
-    expect(Math.abs(p.angulo)).toBeLessThan(1e-9);
+    expect(Math.abs(Math.sin(p.angulo))).toBeLessThan(1e-9);
   });
 });
 

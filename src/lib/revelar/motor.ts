@@ -10,6 +10,12 @@ import {
   posesBrincos,
   poseColar3D,
   posePulseira,
+  eixosAnel,
+  aberturaAnel,
+  alfaAnel,
+  maoConfiavel,
+  type Braco,
+  type MaoPulso,
   pixels3D,
   baseCabeca,
   basePescoço,
@@ -31,7 +37,7 @@ export type Selecao = Partial<Record<TipoPeca, Peca>>;
 
 type Lm = { x: number; y: number; z: number; visibility?: number };
 
-class Slot {
+export class Slot {
   readonly fx: OneEuroFilter;
   readonly fy: OneEuroFilter;
   readonly fs: OneEuroFilter;
@@ -124,6 +130,9 @@ export class MotorProvador {
   private ovalDebug: Ponto[] = [];
   private cascosMaos: Ponto[][] = [];
   private maoNoRosto = false;
+  private larguraPulsoAnterior: number | null = null;
+  private pulseiraDebug: MaoPulso | null = null;
+  private aux: HTMLCanvasElement | null = null;
   private valores = padraoDebug();
   private debugAtivo = false;
   private pendulos = [new Pendulo(), new Pendulo()] as const;
@@ -285,10 +294,15 @@ export class MotorProvador {
       }
     }
 
+    // Pose detectado uma vez por ciclo e compartilhado entre colar e pulseira.
+    const poseLm: Lm[] | undefined =
+      this.pose && (sel.colar || sel.pulseira)
+        ? this.pose.detectForVideo(this.video, ts).landmarks[0]
+        : undefined;
     if (sel.colar) {
       let ombros: Ombros | null = null;
-      if (this.pose) {
-        const lm = this.pose.detectForVideo(this.video, ts).landmarks[0];
+      if (poseLm) {
+        const lm = poseLm;
         const a = lm?.[11],
           b = lm?.[12];
         if (a && b)
@@ -310,28 +324,33 @@ export class MotorProvador {
 
     if (sel.pulseira && this.mao) {
       const res = this.mao.detectForVideo(this.video, ts);
-      let melhor: { p0: Ponto; p9: Ponto; d: number } | null = null;
+      let melhor: (MaoPulso & { d: number; score: number }) | null = null;
       this.cascosMaos = res.landmarks.map((mao) =>
         expandir(cascoConvexo(mao.map((l) => ({ x: l.x * w, y: l.y * h }))), c.oclusao.expandirMao),
       );
-      for (const mao of res.landmarks) {
-        const p0 = px(mao[0]);
-        const p9 = px(mao[9]);
-        if (!p0 || !p9) continue;
+      res.landmarks.forEach((mao, i) => {
+        const p0 = px(mao[0]), p5 = px(mao[5]), p9 = px(mao[9]), p17 = px(mao[17]);
+        if (!p0 || !p5 || !p9 || !p17) return;
         const d = dist(p0, p9);
-        if (!melhor || d > melhor.d) melhor = { p0, p9, d };
-      }
-      if (melhor) {
+        const score = res.handedness[i]?.[0]?.score ?? 0;
+        if (!melhor || d > melhor.d) melhor = { p0, p5, p9, p17, d, score };
+      });
+      this.pulseiraDebug = null;
+      const m = melhor as (MaoPulso & { d: number; score: number }) | null;
+      if (m) {
         this.ultimaMao = t;
-        const p = this.pecaAjustada(sel.pulseira);
-        const alvo = posePulseira(
-          melhor.p0,
-          melhor.p9,
-          null,
-          p.medida_mm * (p.ajuste?.escala ?? 1),
-        );
-        this.slots.pulseira.atualizar(alvo, t);
-        dbg?.push(melhor.p0, melhor.p9);
+        const largura = dist(m.p5, m.p17);
+        const confiavel = maoConfiavel(m.score, largura, this.larguraPulsoAnterior, c);
+        this.larguraPulsoAnterior = largura;
+        // Duvidosa: não atualiza; o Slot segura 300 ms e depois apaga.
+        if (confiavel) {
+          const p = this.pecaAjustada(sel.pulseira);
+          const alvo = posePulseira(m, this.bracoDaMao(poseLm, m, w, h), c);
+          alvo.tamanho *= p.ajuste?.escala ?? 1;
+          this.slots.pulseira.atualizar(alvo, t);
+          this.pulseiraDebug = m;
+          dbg?.push(m.p0, m.p5, m.p9, m.p17);
+        }
       }
     }
 
@@ -345,6 +364,25 @@ export class MotorProvador {
     }
   }
 
+  /** Cotovelo→pulso do lado cujo pulso do Pose está perto do P0 da mão. */
+  private bracoDaMao(lm: Lm[] | undefined, m: MaoPulso, w: number, h: number): Braco | null {
+    if (!lm) return null;
+    const vis = this.valores.calibracao.pulseira.visibilidadeBraco;
+    let melhor: Braco | null = null;
+    let menor = 2 * dist(m.p0, m.p9);
+    for (const [ic, ip] of [[13, 15], [14, 16]] as const) {
+      const co = lm[ic], pu = lm[ip];
+      if (!co || !pu || (co.visibility ?? 0) < vis || (pu.visibility ?? 0) < vis) continue;
+      const pulso = { x: pu.x * w, y: pu.y * h };
+      const d = dist(pulso, m.p0);
+      if (d < menor) {
+        menor = d;
+        melhor = { cotovelo: { x: co.x * w, y: co.y * h }, pulso };
+      }
+    }
+    return melhor;
+  }
+
   private desenhar(t: number): void {
     const ctx = this.ctx;
     ctx.drawImage(this.video, 0, 0, this.cena.width, this.cena.height);
@@ -354,7 +392,7 @@ export class MotorProvador {
       this.desenharPeca(this.slots.brincoA, sel.brinco, t);
       this.desenharPeca(this.slots.brincoB, sel.brinco, t);
     }
-    if (sel.pulseira) this.desenharPeca(this.slots.pulseira, sel.pulseira, t);
+    if (sel.pulseira) this.desenharPulseira(this.slots.pulseira, sel.pulseira, t);
 
     if (this.dbg && this.debugAtivo) {
       const d = this.dbg;
@@ -373,6 +411,32 @@ export class MotorProvador {
         oval.forEach((p, i) => (i ? d.lineTo(p.x, p.y) : d.moveTo(p.x, p.y)));
         d.closePath();
         d.stroke();
+      }
+      const pd = this.pulseiraDebug;
+      const sp = this.slots.pulseira;
+      if (sel.pulseira && sp.tem) {
+        const cp = this.valores.calibracao;
+        const { x, y, tamanho: R, angulo } = sp.pose;
+        const { n } = eixosAnel(angulo);
+        d.strokeStyle = cp.debug.pulseira;
+        d.fillStyle = cp.debug.pulseira;
+        d.lineWidth = 1.5;
+        d.beginPath();
+        d.ellipse(x, y, R, R * aberturaAnel(cp), angulo, 0, Math.PI * 2);
+        d.stroke();
+        d.beginPath();
+        d.moveTo(x - n.x * R * 1.15, y - n.y * R * 1.15);
+        d.lineTo(x + n.x * R * 1.15, y + n.y * R * 1.15);
+        d.stroke();
+        d.beginPath();
+        d.arc(x, y, 4, 0, Math.PI * 2);
+        d.fill();
+        if (pd)
+          for (const p of [pd.p0, pd.p5, pd.p9, pd.p17]) {
+            d.beginPath();
+            d.arc(p.x, p.y, 6, 0, Math.PI * 2);
+            d.stroke();
+          }
       }
       const base = this.baseDebug;
       if (base) {
@@ -431,6 +495,52 @@ export class MotorProvador {
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = Math.max(1, h * CALIBRACAO.sombra.deslocY);
     ctx.drawImage(img, -peca.ancora.x * w + dx, -peca.ancora.y * h + dy, w, h);
+    ctx.restore();
+  }
+
+  /**
+   * Pulseira "vestida": o PNG (círculo visto de frente) vira um oval por transformação afim;
+   * uma máscara em degradê ao longo do antebraço mostra o arco da frente (cotovelo)
+   * e esconde o arco de trás (mão), que fica atrás do pulso.
+   */
+  private desenharPulseira(slot: Slot, peca: Peca, t: number): void {
+    slot.passo(t);
+    if (!slot.tem || slot.opacidade <= 0) return;
+    const img = this.imagens.get(peca.id);
+    if (!img) return;
+    const c = this.valores.calibracao;
+    const W = this.cena.width, H = this.cena.height;
+    if (!this.aux) this.aux = document.createElement("canvas");
+    if (this.aux.width !== W || this.aux.height !== H) {
+      this.aux.width = W;
+      this.aux.height = H;
+    }
+    const ax = this.aux.getContext("2d");
+    if (!ax) return;
+    const { x, y, tamanho: R, angulo } = slot.pose;
+    const r = R * aberturaAnel(c);
+    const { n, a } = eixosAnel(angulo);
+    ax.setTransform(1, 0, 0, 1, 0, 0);
+    ax.globalCompositeOperation = "source-over";
+    ax.clearRect(0, 0, W, H);
+    ax.setTransform(n.x * R, n.y * R, a.x * r, a.y * r, x, y);
+    ax.drawImage(img, -1, -1, 2, 2);
+    ax.setTransform(1, 0, 0, 1, 0, 0);
+    // Máscara: v vai de −1 (lado da mão) a +1 (lado do cotovelo) em raios menores.
+    const g = ax.createLinearGradient(x - a.x * r, y - a.y * r, x + a.x * r, y + a.y * r);
+    const corte = Math.min(0.99, Math.max(0.001, c.pulseira.degradeCorte));
+    for (const v of [-1, -corte, 0, corte, 1]) g.addColorStop((v + 1) / 2, `rgba(0,0,0,${alfaAnel(v, c)})`);
+    ax.globalCompositeOperation = "destination-in";
+    ax.fillStyle = g;
+    ax.fillRect(0, 0, W, H);
+    ax.globalCompositeOperation = "source-over";
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.globalAlpha = slot.opacidade;
+    ctx.shadowColor = CALIBRACAO.sombra.cor;
+    ctx.shadowBlur = Math.max(2, r * CALIBRACAO.sombra.desfoque * 2);
+    ctx.shadowOffsetY = Math.max(1, r * CALIBRACAO.sombra.deslocY);
+    ctx.drawImage(this.aux, 0, 0);
     ctx.restore();
   }
 }

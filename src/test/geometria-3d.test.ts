@@ -134,7 +134,8 @@ describe("geometria tridimensional", () => {
     expect(poseColar3D(null, { ...ombros, b: ombros.a }, 130)).toBeNull();
   });
   it("pulseira usa sempre a mão, independentemente da escala facial", () => {
-    expect(posePulseira({ x: 0, y: 190 }, { x: 0, y: 0 }, 100, 70).tamanho).toBe(140);
+    const m = { p0: { x: 0, y: 190 }, p5: { x: -50, y: 40 }, p9: { x: 0, y: 0 }, p17: { x: 50, y: 40 } };
+    expect(posePulseira(m, null).tamanho).toBeCloseTo((100 * 0.8 * 1.06) / 2);
   });
   it("base degenerada não produz NaN", () => {
     const r = rosto();
@@ -162,10 +163,10 @@ describe("calibração local", () => {
     const antigo = padraoDebug();
     antigo.calibracao.brinco.lobuloBaixo = 0.3;
     const leitura = vi.spyOn(Storage.prototype, "getItem").mockImplementation((chave) =>
-      chave === "revelar-calibracao-3d-v2" ? JSON.stringify(antigo) : null,
+      chave === "revelar-calibracao-3d-v3" ? JSON.stringify(antigo) : null,
     );
     try {
-      expect(CHAVE_CALIBRACAO).toBe("revelar-calibracao-3d-v3");
+      expect(CHAVE_CALIBRACAO).toBe("revelar-calibracao-3d-v4");
       expect(carregarDebug().calibracao.brinco.lobuloBaixo).toBe(0.13);
     } finally {
       leitura.mockRestore();

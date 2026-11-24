@@ -6,7 +6,7 @@ import type { Peca } from "@/config/catalogo";
 import { AjusteCalibracao } from "./AjusteCalibracao";
 import { identificadorAparelho } from "@/lib/revelar/aparelho";
 import {
-  ajusteDaPeca, alterarCampo, CAMPOS_AJUSTE, padraoDebug,
+  ajusteDaPeca, alterarCampo, lerCampo, CAMPOS_AJUSTE, padraoDebug,
   valoresParaCopiar, type AjustesDebug,
 } from "@/lib/revelar/calibracao-debug";
 
@@ -47,13 +47,21 @@ export function PainelCalibracao({ valores, pecas, aoAlterar, aoFechar }: Painel
       </div>
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
         {CAMPOS_CALIBRACAO.map((f) => {
-          const n = f.grupo === "brinco" ? valores.calibracao.brinco[f.chave] : valores.calibracao.colar[f.chave];
+          const n = lerCampo(valores.calibracao, f);
           return <AjusteCalibracao key={f.chave} nome={f.chave} valor={n} min={f.min} max={f.max} passo={f.passo} aoAlterar={(v) => {
             const novo = structuredClone(valores);
             alterarCampo(novo.calibracao, f, v);
             aoAlterar(novo);
           }} />;
         })}
+        <label className="flex items-center justify-between gap-2 text-xs">
+          <span className="font-mono">inverterFrente</span>
+          <input type="checkbox" className="size-5 accent-primary" checked={valores.calibracao.pulseira.inverterFrente} onChange={(e) => {
+            const novo = structuredClone(valores);
+            novo.calibracao.pulseira.inverterFrente = e.target.checked;
+            aoAlterar(novo);
+          }} />
+        </label>
         {pecas.length > 0 && (
           <label className="block text-xs">Peça
             <select aria-label="Peça para ajustar" className="mt-1 w-full rounded-md border border-input bg-background p-2" value={peca?.id ?? ""} onChange={(e) => setId(e.target.value)}>

@@ -11,15 +11,21 @@ export interface AjustesDebug {
   calibracao: Calibracao;
   pecas: Record<string, AjusteDebug>;
 }
-export const CHAVE_CALIBRACAO = "revelar-calibracao-3d-v3";
+export const CHAVE_CALIBRACAO = "revelar-calibracao-3d-v4";
 export const padraoDebug = (): AjustesDebug => ({
   calibracao: structuredClone(CALIBRACAO),
   pecas: {},
 });
+export function lerCampo(c: Calibracao, f: CampoCalibracao): number {
+  if (f.grupo === "brinco") return c.brinco[f.chave];
+  if (f.grupo === "colar") return c.colar[f.chave];
+  return c.pulseira[f.chave];
+}
 export function alterarCampo(c: Calibracao, f: CampoCalibracao, v: number): void {
   const valor = Math.min(f.max, Math.max(f.min, v));
   if (f.grupo === "brinco") c.brinco[f.chave] = valor;
-  else c.colar[f.chave] = valor;
+  else if (f.grupo === "colar") c.colar[f.chave] = valor;
+  else c.pulseira[f.chave] = valor;
   if (c.brinco.yawSomeFim <= c.brinco.yawSomeInicio)
     c.brinco.yawSomeFim = c.brinco.yawSomeInicio + 1;
 }
@@ -27,6 +33,7 @@ const schema = z.object({
   calibracao: z.object({
     brinco: z.record(z.string(), z.unknown()),
     colar: z.record(z.string(), z.unknown()),
+    pulseira: z.record(z.string(), z.unknown()).optional(),
   }),
   pecas: z.record(
     z.string(),
@@ -43,9 +50,11 @@ export function decodificarDebug(raw: string | null): AjustesDebug {
     const resultado = schema.safeParse(JSON.parse(raw ?? "null"));
     if (!resultado.success) return valor;
     for (const f of CAMPOS_CALIBRACAO) {
-      const n = resultado.data.calibracao[f.grupo][f.chave];
+      const n = resultado.data.calibracao[f.grupo]?.[f.chave];
       if (typeof n === "number" && Number.isFinite(n)) alterarCampo(valor.calibracao, f, n);
     }
+    const inv = resultado.data.calibracao.pulseira?.["inverterFrente"];
+    if (typeof inv === "boolean") valor.calibracao.pulseira.inverterFrente = inv;
     valor.pecas = resultado.data.pecas;
   } catch {
     /* JSON inválido não impede usar a câmera. */
@@ -83,9 +92,15 @@ export function valoresParaCopiar(v: AjustesDebug): string {
     colarBaixo: v.calibracao.colar.colarBaixo,
     colarTras: v.calibracao.colar.colarTras,
   };
+  const pulseira = {
+    ...Object.fromEntries(
+      CAMPOS_CALIBRACAO.filter((f) => f.grupo === "pulseira").map((f) => [f.chave, lerCampo(v.calibracao, f)]),
+    ),
+    inverterFrente: v.calibracao.pulseira.inverterFrente,
+  };
   return JSON.stringify(
     {
-      calibracao: { brinco, colar },
+      calibracao: { brinco, colar, pulseira },
       catalogo: Object.entries(v.pecas).map(([id, ajuste]) => ({ id, ajuste })),
     },
     null,

@@ -42,3 +42,4 @@ use the editor.
 - Keep estimated generation progress monotonic below completion and learn timings only from successful requests in browser storage. Why: the AI reports no intermediate progress.
 
 - The camera MediaStream is a per-visit singleton in `src/lib/revelar/camera.ts`; screens only detach it, and only `liberarCamera()` (pagehide, long background, idle result) stops tracks. Why: re-requesting on iOS repeats the permission prompt.
+- Bracelets are drawn as a ring: front-view circle PNG mapped to an ellipse sized from wrist width (P5–P17), masked so only the elbow-side arc shows; distrust low-score or jumping hands. Why: a flat PNG pasted over the wrist looks stuck on, not worn.
