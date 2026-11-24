@@ -28,3 +28,10 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Revelar — project rules
+- All try-on tracking runs in the browser (MediaPipe loaded on demand via dynamic import in `src/lib/revelar/rastreamento.ts`); never move it server-side. Why: zero per-use cost and the photo stays on the phone.
+- Editable knobs live only in `src/config/` (catalogo, calibracao, modelos, custos, visual); code reads from there. Why: the owner edits these without touching logic.
+- The scene canvas is drawn in un-mirrored camera space and mirrored only via CSS; exports re-mirror in their own canvas so text stays readable. Why: avoids mirrored text and misplaced jewels.
+- The AI "versão realista" goes through the public server route `/api/public/versao-realista`, which enforces origin, size, per-IP-hash and global daily limits in the database before calling AI; client counters are cosmetic. Why: the QR is public and cost must be capped server-side.
+- Never store photos or raw IPs; only salted SHA-256 IP hashes in `uso_versao_realista` (RLS on, no client policies). Why: privacy promise shown to customers.

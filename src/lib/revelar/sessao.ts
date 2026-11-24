@@ -1,0 +1,21 @@
+/** Estado de sessão no navegador (só aviso visual; o servidor é quem limita). Chamar apenas no cliente. */
+import { LIMITE_POR_PESSOA_24H } from "@/config/custos";
+
+const CHAVE_LOJA = "revelar:loja";
+const CHAVE_GERACOES = "revelar:geracoes";
+
+function seguro<T>(fn: () => T, padrao: T): T {
+  try {
+    return fn();
+  } catch {
+    return padrao;
+  }
+}
+
+export const guardarLoja = (loja: string): void => seguro(() => sessionStorage.setItem(CHAVE_LOJA, loja), undefined);
+export const lerLojaSessao = (): string | null => seguro(() => sessionStorage.getItem(CHAVE_LOJA), null);
+export const geracoesUsadas = (): number =>
+  seguro(() => Number(sessionStorage.getItem(CHAVE_GERACOES) ?? "0") || 0, 0);
+export const registrarGeracao = (): void =>
+  seguro(() => sessionStorage.setItem(CHAVE_GERACOES, String(geracoesUsadas() + 1)), undefined);
+export const geracoesRestantes = (): number => Math.max(0, LIMITE_POR_PESSOA_24H - geracoesUsadas());
