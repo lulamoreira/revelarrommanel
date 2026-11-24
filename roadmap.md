@@ -7,3 +7,6 @@
 - [x] Cloud: tabela uso_versao_realista (RLS sem policies), sal secreto
 - [x] Testes de regras
 - [x] Logo Rommanel na base da polaroid (foto e vídeo), abaixo da frase
+- [x] Geometria 3D, gravidade dos brincos, colar estabilizado e escala da mão
+- [x] Painel de calibração ao vivo com persistência e cópia
+- [x] Testes sintéticos 3D e verificação no navegador (rosto simulado; aparelho real pendente de validação pela loja)

@@ -32,6 +32,9 @@ use the editor.
 ## Revelar — project rules
 - All try-on tracking runs in the browser (MediaPipe loaded on demand via dynamic import in `src/lib/revelar/rastreamento.ts`); never move it server-side. Why: zero per-use cost and the photo stays on the phone.
 - Editable knobs live only in `src/config/` (catalogo, calibracao, modelos, custos, visual); code reads from there. Why: the owner edits these without touching logic.
+- Use a depth-aware, nose-facing head frame with screen-down Y for ear anchors; stabilize the neck against yaw/roll, validate shoulders, and scale bracelets from the hand. Why: jaw/chin anchors and guessed shoulders drift during head turns.
+- Debug calibration overrides stay browser-local, validated and separate from catalog defaults; preserve PosePeca and One Euro smoothing. Why: live tuning must not change production configuration or export mechanics.
+- Keep camera lifecycle in a browser hook with current callback refs and cleanup after async cancellation. Why: calibration renders must not reopen the camera or leak its tracks.
 - The scene canvas is drawn in un-mirrored camera space and mirrored only via CSS; exports re-mirror in their own canvas so text stays readable. Why: avoids mirrored text and misplaced jewels.
 - The AI "versão realista" goes through the public server route `/api/public/versao-realista`, which enforces origin, size, per-IP-hash and global daily limits in the database before calling AI; client counters are cosmetic. Why: the QR is public and cost must be capped server-side.
 - Never store photos or raw IPs; only salted SHA-256 IP hashes in `uso_versao_realista` (RLS on, no client policies). Why: privacy promise shown to customers.

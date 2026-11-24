@@ -8,26 +8,40 @@ import type { Peca, TipoPeca } from "@/config/catalogo";
 import { OneEuroFilter, desenrolarAngulo } from "./one-euro";
 import {
   posesBrincos,
-  poseColar,
+  poseColar3D,
   posePulseira,
-  pxPorMmMao,
-  pxPorMmRosto,
+  pixels3D,
+  baseCabeca,
+  basePescoço,
+  projetar,
   dist,
+  ombrosValidos,
+  type BaseCabeca,
+  type Ombros,
   type Ponto,
   type PosePeca,
 } from "./geometria";
+import { Pendulo } from "./pendulo";
+import { padraoDebug, ajusteDaPeca, type AjustesDebug } from "./calibracao-debug";
 import { carregarMao, carregarPose, carregarRosto } from "./rastreamento";
 import type { FaceLandmarker, HandLandmarker, PoseLandmarker } from "./rastreamento";
 
 export type Selecao = Partial<Record<TipoPeca, Peca>>;
 
-type Lm = { x: number; y: number };
+type Lm = { x: number; y: number; z: number; visibility?: number };
 
 class Slot {
-  readonly fx = new OneEuroFilter(CALIBRACAO.suavizacao);
-  readonly fy = new OneEuroFilter(CALIBRACAO.suavizacao);
-  readonly fs = new OneEuroFilter(CALIBRACAO.suavizacao);
-  readonly fa = new OneEuroFilter(CALIBRACAO.suavizacao);
+  readonly fx: OneEuroFilter;
+  readonly fy: OneEuroFilter;
+  readonly fs: OneEuroFilter;
+  readonly fa: OneEuroFilter;
+  constructor(minCutoff = CALIBRACAO.suavizacao.minCutoff) {
+    const params = { ...CALIBRACAO.suavizacao, minCutoff };
+    this.fx = new OneEuroFilter(params);
+    this.fy = new OneEuroFilter(params);
+    this.fs = new OneEuroFilter(params);
+    this.fa = new OneEuroFilter(params);
+  }
   pose: PosePeca = { x: 0, y: 0, tamanho: 0, angulo: 0, opacidade: 0 };
   ultimoVisto = -Infinity;
   ultimoAngulo: number | null = null;
@@ -57,7 +71,10 @@ class Slot {
   passo(t: number): void {
     const { segurarMs, fadeMs } = CALIBRACAO.rastreamento;
     const desde = t - this.ultimoVisto;
-    const alvo = desde <= segurarMs ? this.opacidadeAlvo : this.opacidadeAlvo * Math.max(0, 1 - (desde - segurarMs) / fadeMs);
+    const alvo =
+      desde <= segurarMs
+        ? this.opacidadeAlvo
+        : this.opacidadeAlvo * Math.max(0, 1 - (desde - segurarMs) / fadeMs);
     this.opacidade += (alvo - this.opacidade) * 0.35;
     if (this.opacidade < 0.01 && desde > segurarMs) this.opacidade = 0;
   }
@@ -85,13 +102,28 @@ export class MotorProvador {
   private ultimoDesenho = 0;
   private ultimaDeteccao = 0;
   private ultimoTs = 0;
-  private slots = { brincoA: new Slot(), brincoB: new Slot(), colar: new Slot(), pulseira: new Slot() };
+  private slots = {
+    brincoA: new Slot(),
+    brincoB: new Slot(),
+    colar: new Slot(CALIBRACAO.colar.minCutoff),
+    pulseira: new Slot(),
+  };
   private ultimoOmbro = 0;
   private ultimaMao = 0;
   private dicaAtual: string | null = null;
   private quadros = 0;
   private inicioFps = 0;
   private pontosDebug: Ponto[] = [];
+  private baseDebug: BaseCabeca | null = null;
+  private valores = padraoDebug();
+  private pendulos = [new Pendulo(), new Pendulo()] as const;
+
+  definirCalibracao(valores: AjustesDebug): void {
+    this.valores = valores;
+  }
+  private pecaAjustada(p: Peca): Peca {
+    return { ...p, ajuste: ajusteDaPeca(p, this.valores) };
+  }
 
   constructor(
     private readonly video: HTMLVideoElement,
@@ -191,41 +223,59 @@ export class MotorProvador {
     const dbg: Ponto[] | null = this.dbg ? (this.pontosDebug = []) : null;
     const sel = this.selecao;
 
-    let pxmmRosto: number | null = null;
-    let queixo: Ponto | null = null;
+    const c = this.valores.calibracao;
+    let cabeca: BaseCabeca | null = null;
+    this.baseDebug = null;
     if ((sel.brinco || sel.colar) && this.rosto) {
       const lm = this.rosto.detectForVideo(this.video, ts).faceLandmarks[0];
       if (lm) {
-        const g = (i: number) => px(lm[i]);
-        const r = {
-          l234: g(234), l454: g(454), l177: g(177), l401: g(401),
-          l33: g(33), l263: g(263), nariz: g(1), queixo: g(152),
+        const g = (i: number) => {
+          const l = lm[i];
+          return l ? pixels3D(l, w, h) : null;
         };
-        if (Object.values(r).every(Boolean)) {
-          const rr = r as Record<keyof typeof r, Ponto>;
-          pxmmRosto = pxPorMmRosto(rr.l234, rr.l454);
-          queixo = rr.queixo;
-          if (sel.brinco) {
-            const [a, b] = posesBrincos(rr, sel.brinco.medida_mm * (sel.brinco.ajuste?.escala ?? 1));
+        const l234 = g(234),
+          l454 = g(454),
+          l33 = g(33),
+          l263 = g(263),
+          nariz = g(1),
+          queixo = g(152);
+        if (l234 && l454 && l33 && l263 && nariz && queixo) {
+          cabeca = baseCabeca({ l234, l454, l33, l263, nariz, queixo });
+          this.baseDebug = cabeca;
+          if (cabeca && sel.brinco) {
+            const p = this.pecaAjustada(sel.brinco);
+            const [a, b] = posesBrincos(cabeca, p.medida_mm * (p.ajuste?.escala ?? 1), c);
+            a.angulo = this.pendulos[0].atualizar(a.x, t, cabeca.largura, c.brinco.pendulo);
+            b.angulo = this.pendulos[1].atualizar(b.x, t, cabeca.largura, c.brinco.pendulo);
             this.slots.brincoA.atualizar(a, t);
             this.slots.brincoB.atualizar(b, t);
           }
-          dbg?.push(rr.l234, rr.l454, rr.l177, rr.l401, rr.l33, rr.l263, rr.nariz, rr.queixo);
+          dbg?.push(l234, l454, l33, l263, nariz, queixo);
         }
       }
     }
 
-    if (sel.colar && this.pose) {
-      const lm = this.pose.detectForVideo(this.video, ts).landmarks[0];
-      const o11 = px(lm?.[11]);
-      const o12 = px(lm?.[12]);
-      const vis = (i: number) => (lm?.[i] as { visibility?: number } | undefined)?.visibility ?? 1;
-      if (o11 && o12 && vis(11) > 0.5 && vis(12) > 0.5) {
-        this.ultimoOmbro = t;
-        const alvo = poseColar(o11, o12, queixo, pxmmRosto, sel.colar.medida_mm * (sel.colar.ajuste?.escala ?? 1));
-        this.slots.colar.atualizar(alvo, t);
-        dbg?.push(o11, o12);
+    if (sel.colar) {
+      let ombros: Ombros | null = null;
+      if (this.pose) {
+        const lm = this.pose.detectForVideo(this.video, ts).landmarks[0];
+        const a = lm?.[11],
+          b = lm?.[12];
+        if (a && b)
+          ombros = {
+            a: { x: a.x * w, y: a.y * h, visibility: a.visibility ?? 0 },
+            b: { x: b.x * w, y: b.y * h, visibility: b.visibility ?? 0 },
+            larguraVideo: w,
+            alturaVideo: h,
+          };
       }
+      const p = this.pecaAjustada(sel.colar);
+      const alvo = poseColar3D(cabeca, ombros, p.medida_mm * (p.ajuste?.escala ?? 1), c);
+      if (alvo) {
+        this.slots.colar.atualizar(alvo, t);
+        this.ultimoOmbro = t;
+      }
+      if (ombrosValidos(ombros, c)) dbg?.push(ombros.a, ombros.b);
     }
 
     if (sel.pulseira && this.mao) {
@@ -240,8 +290,13 @@ export class MotorProvador {
       }
       if (melhor) {
         this.ultimaMao = t;
-        const fator = pxmmRosto ?? pxPorMmMao(melhor.p0, melhor.p9);
-        const alvo = posePulseira(melhor.p0, melhor.p9, fator, sel.pulseira.medida_mm * (sel.pulseira.ajuste?.escala ?? 1));
+        const p = this.pecaAjustada(sel.pulseira);
+        const alvo = posePulseira(
+          melhor.p0,
+          melhor.p9,
+          null,
+          p.medida_mm * (p.ajuste?.escala ?? 1),
+        );
         this.slots.pulseira.atualizar(alvo, t);
         dbg?.push(melhor.p0, melhor.p9);
       }
@@ -270,16 +325,47 @@ export class MotorProvador {
     if (this.dbg) {
       const d = this.dbg;
       d.clearRect(0, 0, d.canvas.width, d.canvas.height);
-      d.fillStyle = "rgba(0,255,120,0.9)";
+      d.fillStyle = this.valores.calibracao.debug.pontos;
       for (const p of this.pontosDebug) {
         d.beginPath();
         d.arc(p.x, p.y, 5, 0, Math.PI * 2);
         d.fill();
       }
+      const base = this.baseDebug;
+      if (base) {
+        const c = this.valores.calibracao;
+        const origem = base.centro;
+        for (const [p, cor] of [
+          [projetar(base, { a: 0.4, b: 0, c: 0 }), c.debug.eixoX],
+          [projetar(base, { a: 0, b: 0.4, c: 0 }), c.debug.eixoY],
+          [projetar(base, { a: 0, b: 0, c: 0.4 }), c.debug.eixoZ],
+        ] as const) {
+          d.strokeStyle = cor;
+          d.lineWidth = 3;
+          d.beginPath();
+          d.moveTo(origem.x, origem.y);
+          d.lineTo(p.x, p.y);
+          d.stroke();
+        }
+        d.strokeStyle = c.debug.pontos;
+        for (const p of posesBrincos(base, 1, c)) {
+          d.beginPath();
+          d.arc(p.x, p.y, 9, 0, Math.PI * 2);
+          d.stroke();
+        }
+        const pescoço = basePescoço(base, c);
+        d.beginPath();
+        d.moveTo(pescoço.x - 10, pescoço.y);
+        d.lineTo(pescoço.x + 10, pescoço.y);
+        d.moveTo(pescoço.x, pescoço.y - 10);
+        d.lineTo(pescoço.x, pescoço.y + 10);
+        d.stroke();
+      }
     }
   }
 
-  private desenharPeca(slot: Slot, peca: Peca, espelhar: boolean, t: number): void {
+  private desenharPeca(slot: Slot, original: Peca, espelhar: boolean, t: number): void {
+    const peca = this.pecaAjustada(original);
     slot.passo(t);
     if (!slot.tem || slot.opacidade <= 0) return;
     const img = this.imagens.get(peca.id);
@@ -289,7 +375,7 @@ export class MotorProvador {
     const brinco = peca.tipo === "brinco";
     const h = brinco ? tamanho : tamanho / proporcao;
     const w = brinco ? tamanho * proporcao : tamanho;
-    const pxmm = tamanho / Math.max(peca.medida_mm, 1);
+    const pxmm = tamanho / Math.max(peca.medida_mm * (peca.ajuste?.escala ?? 1), 1);
     const dx = (peca.ajuste?.dx ?? 0) * pxmm;
     const dy = (peca.ajuste?.dy ?? 0) * pxmm;
     const ctx = this.ctx;
