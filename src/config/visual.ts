@@ -1,3 +1,6 @@
+/** Exibe o acesso à calibração; ?debug=1 continua disponível se ocultado. */
+export const MOSTRAR_BOTAO_CALIBRAR = true;
+
 /** Cores usadas só no desenho em canvas (fora do CSS). Mantenha em sintonia com src/styles.css. */
 export const VISUAL_CANVAS = {
   moldura: "#FFFFFF",

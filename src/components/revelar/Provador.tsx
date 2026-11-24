@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Peca, TipoPeca } from "@/config/catalogo";
 import { type MotorProvador, type Selecao } from "@/lib/revelar/motor";
@@ -15,6 +15,8 @@ import { BotoesCaptura } from "./BotoesCaptura";
 import { Catalogo } from "./Catalogo";
 import { Logo } from "./Logo";
 import { PainelCalibracao } from "./PainelCalibracao";
+import { MOSTRAR_BOTAO_CALIBRAR } from "@/config/visual";
+import { cn } from "@/lib/utils";
 import {
   carregarDebug,
   salvarDebug,
@@ -45,16 +47,17 @@ export function Provador({ debug, selecaoInicial, aoCapturar, aoErroCamera }: Pr
   const [carga, setCarga] = useState<EstadoCarga>("pronto");
   const [dica, setDica] = useState<string | null>(null);
   const [fps, setFps] = useState(0);
+  const [calibrando, setCalibrando] = useState(debug);
   const [flash, setFlash] = useState(0);
   const [valores, setValores] = useState<AjustesDebug>(padraoDebug);
   const valoresRef = useRef(valores);
   useEffect(() => {
-    if (!debug) return;
+    if (!calibrando) return;
     const salvos = carregarDebug();
     valoresRef.current = salvos;
     setValores(salvos);
     motorRef.current?.definirCalibracao(salvos);
-  }, [debug]);
+  }, [calibrando]);
   const alterarCalibracao = (v: AjustesDebug) => {
     valoresRef.current = v;
     setValores(v);
@@ -76,7 +79,7 @@ export function Provador({ debug, selecaoInicial, aoCapturar, aoErroCamera }: Pr
     debugRef,
     motorRef,
     valoresRef,
-    debug,
+    debug: calibrando,
     aoDica: setDica,
     aoFps: setFps,
     aoDesenhar: gravacao.desenharQuadro,
@@ -134,25 +137,30 @@ export function Provador({ debug, selecaoInicial, aoCapturar, aoErroCamera }: Pr
         className="absolute inset-0 h-full w-full -scale-x-100 object-cover"
         aria-label="Pré-visualização da câmera com as joias"
       />
-      {debug && (
-        <canvas
+      <canvas
           ref={debugRef}
-          className="pointer-events-none absolute inset-0 h-full w-full -scale-x-100 object-cover"
+          className={cn("pointer-events-none absolute inset-0 h-full w-full -scale-x-100 object-cover", !calibrando && "invisible")}
+          aria-hidden
         />
-      )}
       {flash > 0 && (
         <div key={flash} className="animar-flash pointer-events-none absolute inset-0 bg-flash" />
       )}
 
       <header className="absolute inset-x-0 top-0 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <Logo claro />
-        {debug && (
+        {calibrando && (
           <p className="mt-2 text-center font-mono text-xs text-overlay-foreground">{fps} fps</p>
         )}
       </header>
 
-      {debug && (
-        <PainelCalibracao valores={valores} pecas={pecasAtuais()} aoAlterar={alterarCalibracao} />
+      {MOSTRAR_BOTAO_CALIBRAR && (
+        <Button size="sm" variant="ghost" className="absolute right-[max(0.75rem,env(safe-area-inset-right))] top-[max(0.75rem,env(safe-area-inset-top))] z-30 gap-1.5 rounded-md bg-overlay text-overlay-foreground hover:bg-overlay hover:text-overlay-foreground" aria-pressed={calibrando} aria-controls="painel-calibracao" onClick={() => setCalibrando((v) => !v)}>
+          <SlidersHorizontal size={15} aria-hidden /> Calibrar
+        </Button>
+      )}
+
+      {calibrando && (
+        <PainelCalibracao valores={valores} pecas={pecasAtuais()} aoAlterar={alterarCalibracao} aoFechar={() => setCalibrando(false)} />
       )}
 
       {(carga !== "pronto" || !cameraPronta) && (
@@ -186,7 +194,7 @@ export function Provador({ debug, selecaoInicial, aoCapturar, aoErroCamera }: Pr
         </p>
       )}
 
-      <div className="absolute inset-x-0 bottom-0 pb-[env(safe-area-inset-bottom)]">
+      <div className={cn("absolute inset-x-0", calibrando ? "bottom-[45dvh]" : "bottom-0 pb-[env(safe-area-inset-bottom)]")}>
         <BotoesCaptura
           aoFoto={() => void tirarFoto()}
           videoDisponivel={gravacao.disponivel}
@@ -196,7 +204,7 @@ export function Provador({ debug, selecaoInicial, aoCapturar, aoErroCamera }: Pr
           aoPararVideo={gravacao.parar}
           desabilitado={!cameraPronta}
         />
-        <Catalogo aba={aba} aoAba={setAba} selecao={selecao} aoAlternar={alternar} />
+        {!calibrando && <Catalogo aba={aba} aoAba={setAba} selecao={selecao} aoAlternar={alternar} />}
       </div>
     </main>
   );

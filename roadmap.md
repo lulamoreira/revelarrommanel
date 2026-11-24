@@ -14,3 +14,5 @@
 - [x] Foto/vídeo e envio realista não espelhados
 - [x] Validação sem joias e limites 3/aparelho, 40/IP, 300/dia
 - [x] Testes e verificação dos três ajustes (53 testes, câmera simulada, resposta de IA simulada)
+- [x] Botão Calibrar, gaveta móvel com passos finos e captura sem desenhos
+- [x] Testes e verificação da calibração pela câmera (58 testes; celular/computador e foto/vídeo com câmera simulada)

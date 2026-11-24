@@ -1,25 +1,22 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Copy, RotateCcw, SlidersHorizontal } from "lucide-react";
+import { Copy, RotateCcw, SlidersHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
 import { CAMPOS_CALIBRACAO } from "@/config/calibracao";
 import type { Peca } from "@/config/catalogo";
-import { cn } from "@/lib/utils";
+import { AjusteCalibracao } from "./AjusteCalibracao";
 import {
-  ajusteDaPeca,
-  alterarCampo,
-  CAMPOS_AJUSTE,
-  padraoDebug,
-  valoresParaCopiar,
-  type AjustesDebug,
+  ajusteDaPeca, alterarCampo, CAMPOS_AJUSTE, padraoDebug,
+  valoresParaCopiar, type AjustesDebug,
 } from "@/lib/revelar/calibracao-debug";
+
 export interface PainelCalibracaoProps {
   valores: AjustesDebug;
   pecas: Peca[];
   aoAlterar: (v: AjustesDebug) => void;
+  aoFechar: () => void;
 }
-export function PainelCalibracao({ valores, pecas, aoAlterar }: PainelCalibracaoProps) {
-  const [aberto, setAberto] = useState(false);
+
+export function PainelCalibracao({ valores, pecas, aoAlterar, aoFechar }: PainelCalibracaoProps) {
   const [id, setId] = useState("");
   const [mensagem, setMensagem] = useState("");
   const peca = pecas.find((p) => p.id === id) ?? pecas[0];
@@ -33,117 +30,36 @@ export function PainelCalibracao({ valores, pecas, aoAlterar }: PainelCalibracao
     }
   };
   return (
-    <aside
-      className={cn(
-        "absolute left-3 right-3 top-24 z-20 mx-auto max-w-sm rounded-lg border border-border bg-card text-card-foreground shadow-suave",
-      )}
-      aria-label="Calibração 3D"
-    >
-      <Button
-        variant="ghost"
-        className="flex w-full justify-between"
-        aria-expanded={aberto}
-        onClick={() => setAberto(!aberto)}
-      >
-        <span className="flex items-center gap-2">
-          <SlidersHorizontal size={16} /> Calibração 3D
-        </span>
-        {aberto ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-      </Button>
-      {aberto && (
-        <div className="max-h-[38dvh] space-y-4 overflow-y-auto px-4 pb-4">
-          {CAMPOS_CALIBRACAO.map((f) => {
-            const n =
-              f.grupo === "brinco"
-                ? valores.calibracao.brinco[f.chave]
-                : valores.calibracao.colar[f.chave];
-            return (
-              <label key={f.chave} className="block space-y-2 text-xs">
-                <span className="flex justify-between">
-                  <span>{f.chave}</span>
-                  <output>{n.toFixed(f.passo === 1 ? 0 : 3)}</output>
-                </span>
-                <Slider
-                  aria-label={f.chave}
-                  value={[n]}
-                  min={f.min}
-                  max={f.max}
-                  step={f.passo}
-                  onValueChange={([v]) => {
-                    if (v === undefined) return;
-                    const novo = structuredClone(valores);
-                    alterarCampo(novo.calibracao, f, v);
-                    aoAlterar(novo);
-                  }}
-                />
-              </label>
-            );
-          })}
-          {pecas.length > 0 && (
-            <label className="block text-xs">
-              Peça
-              <select
-                aria-label="Peça para ajustar"
-                className="mt-1 w-full rounded-md border border-input bg-background p-2"
-                value={peca?.id ?? ""}
-                onChange={(e) => setId(e.target.value)}
-              >
-                {pecas.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nome}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          {peca &&
-            ajuste &&
-            CAMPOS_AJUSTE.map((f) => (
-              <label key={f.chave} className="block space-y-2 text-xs">
-                <span className="flex justify-between">
-                  <span>ajuste.{f.chave}</span>
-                  <output>{ajuste[f.chave].toFixed(2)}</output>
-                </span>
-                <Slider
-                  aria-label={`ajuste.${f.chave}`}
-                  value={[ajuste[f.chave]]}
-                  min={f.min}
-                  max={f.max}
-                  step={f.passo}
-                  onValueChange={([v]) => {
-                    if (v === undefined) return;
-                    aoAlterar({
-                      ...valores,
-                      pecas: { ...valores.pecas, [peca.id]: { ...ajuste, [f.chave]: v } },
-                    });
-                  }}
-                />
-              </label>
-            ))}
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" onClick={() => void copiar()}>
-              <Copy size={14} />
-              Copiar valores
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                aoAlterar(padraoDebug());
-                setMensagem("Padrão restaurado");
-              }}
-            >
-              <RotateCcw size={14} />
-              Restaurar padrão
-            </Button>
-          </div>
-          {mensagem && (
-            <p role="status" className="text-xs">
-              {mensagem}
-            </p>
-          )}
+    <aside id="painel-calibracao" className="absolute inset-x-0 bottom-0 z-20 mx-auto flex h-[45dvh] max-h-[45dvh] max-w-lg flex-col rounded-t-lg border border-border bg-card text-card-foreground shadow-suave" aria-label="Calibração 3D" onKeyDown={(e) => { if (e.key === "Escape") aoFechar(); }}>
+      <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-1">
+        <h2 className="flex items-center gap-2 text-sm font-medium"><SlidersHorizontal size={16} aria-hidden /> Calibração 3D</h2>
+        <Button variant="ghost" size="icon" className="size-9" aria-label="Fechar calibração" onClick={aoFechar}><X size={16} aria-hidden /></Button>
+      </div>
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        {CAMPOS_CALIBRACAO.map((f) => {
+          const n = f.grupo === "brinco" ? valores.calibracao.brinco[f.chave] : valores.calibracao.colar[f.chave];
+          return <AjusteCalibracao key={f.chave} nome={f.chave} valor={n} min={f.min} max={f.max} passo={f.passo} aoAlterar={(v) => {
+            const novo = structuredClone(valores);
+            alterarCampo(novo.calibracao, f, v);
+            aoAlterar(novo);
+          }} />;
+        })}
+        {pecas.length > 0 && (
+          <label className="block text-xs">Peça
+            <select aria-label="Peça para ajustar" className="mt-1 w-full rounded-md border border-input bg-background p-2" value={peca?.id ?? ""} onChange={(e) => setId(e.target.value)}>
+              {pecas.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+            </select>
+          </label>
+        )}
+        {peca && ajuste && CAMPOS_AJUSTE.map((f) => (
+          <AjusteCalibracao key={f.chave} nome={`ajuste.${f.chave}`} valor={ajuste[f.chave]} min={f.min} max={f.max} passo={f.passo} aoAlterar={(v) => aoAlterar({ ...valores, pecas: { ...valores.pecas, [peca.id]: { ...ajuste, [f.chave]: v } } })} />
+        ))}
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" onClick={() => void copiar()}><Copy size={14} aria-hidden /> Copiar valores</Button>
+          <Button size="sm" variant="outline" onClick={() => { aoAlterar(padraoDebug()); setMensagem("Padrão restaurado"); }}><RotateCcw size={14} aria-hidden /> Restaurar padrão</Button>
         </div>
-      )}
+        {mensagem && <p role="status" className="text-xs">{mensagem}</p>}
+      </div>
     </aside>
   );
 }

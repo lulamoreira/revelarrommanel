@@ -21,7 +21,10 @@ export function useCameraProvador(options: CameraProvadorOptions): boolean {
     atuais.current = options;
   });
   useEffect(() => {
-    const { videoRef, cenaRef, debugRef, motorRef, valoresRef, debug } = atuais.current;
+    options.motorRef.current?.definirDebug(options.debug);
+  }, [options.debug, options.motorRef]);
+  useEffect(() => {
+    const { videoRef, cenaRef, debugRef, motorRef, valoresRef } = atuais.current;
     const video = videoRef.current,
       cena = cenaRef.current;
     if (!video || !cena) return;
@@ -46,12 +49,13 @@ export function useCameraProvador(options: CameraProvadorOptions): boolean {
           parar();
           return;
         }
-        const motor = new MotorProvador(video, cena, debug ? debugRef.current : null, {
+        const motor = new MotorProvador(video, cena, debugRef.current, {
           aoDica: (v) => atuais.current.aoDica(v),
-          ...(debug ? { aoFps: (v: number) => atuais.current.aoFps(v) } : {}),
+          aoFps: (v) => { if (atuais.current.debug) atuais.current.aoFps(v); },
           aoDesenhar: () => atuais.current.aoDesenhar(),
         });
         motor.definirCalibracao(valoresRef.current);
+        motor.definirDebug(atuais.current.debug);
         motorRef.current = motor;
         motor.iniciar();
         setPronta(true);

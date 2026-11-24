@@ -116,10 +116,16 @@ export class MotorProvador {
   private pontosDebug: Ponto[] = [];
   private baseDebug: BaseCabeca | null = null;
   private valores = padraoDebug();
+  private debugAtivo = false;
   private pendulos = [new Pendulo(), new Pendulo()] as const;
 
   definirCalibracao(valores: AjustesDebug): void {
     this.valores = valores;
+  }
+  /** Só altera a camada de diagnóstico, nunca a cena usada nas capturas. */
+  definirDebug(ativo: boolean): void {
+    this.debugAtivo = ativo;
+    if (!ativo && this.dbg) this.dbg.clearRect(0, 0, this.dbg.canvas.width, this.dbg.canvas.height);
   }
   private pecaAjustada(p: Peca): Peca {
     return { ...p, ajuste: ajusteDaPeca(p, this.valores) };
@@ -135,6 +141,7 @@ export class MotorProvador {
     if (!ctx) throw new Error("Canvas indisponível");
     this.ctx = ctx;
     this.dbg = debug?.getContext("2d") ?? null;
+    this.debugAtivo = Boolean(debug);
   }
 
   /** Carrega imagens e só os detectores necessários. Rejeita se algum falhar. */
@@ -322,7 +329,7 @@ export class MotorProvador {
     }
     if (sel.pulseira) this.desenharPeca(this.slots.pulseira, sel.pulseira, t);
 
-    if (this.dbg) {
+    if (this.dbg && this.debugAtivo) {
       const d = this.dbg;
       d.clearRect(0, 0, d.canvas.width, d.canvas.height);
       d.fillStyle = this.valores.calibracao.debug.pontos;

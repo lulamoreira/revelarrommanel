@@ -35,6 +35,7 @@ use the editor.
 - Use a depth-aware, nose-facing head frame with screen-down Y for ear anchors; stabilize the neck against yaw/roll, validate shoulders, and scale bracelets from the hand. Why: jaw/chin anchors and guessed shoulders drift during head turns.
 - Debug calibration overrides stay browser-local, validated and separate from catalog defaults; preserve PosePeca and One Euro smoothing. Why: live tuning must not change production configuration or export mechanics.
 - Keep camera lifecycle in a browser hook with current callback refs and cleanup after async cancellation. Why: calibration renders must not reopen the camera or leak its tracks.
+- Toggle calibration on a separate persistent diagnostic canvas without restarting the camera; never export that layer. Why: live adjustments must preserve the stream and clean photo/video captures.
 - The scene canvas uses unmirrored camera space; mirror only the live preview via CSS, never photo/video exports or AI input. Why: clothing text and jewelry positions must match the original camera image.
 - The AI "versão realista" goes through `/api/public/versao-realista`, which validates origin, size and UUID, then counts salted device/IP hashes and global usage before AI; local counters are advisory. Why: shared store networks must not consume one customer's allowance.
 - Never store photos, raw IPs or device UUIDs on the server; persist only salted SHA-256 hashes in locked usage records. Why: preserve the privacy promise.
