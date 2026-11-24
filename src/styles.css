@@ -185,3 +185,7 @@
 @utility animar-flash {
   animation: revelar-flash 0.35s ease-out forwards;
 }
+/* Sombra discreta para a marca continuar legível sobre a imagem da câmera. */
+@utility logo-sobre-camara {
+  filter: drop-shadow(0 1px 10px oklch(0.2 0.04 304 / 55%));
+}

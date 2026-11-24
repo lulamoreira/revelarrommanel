@@ -1,23 +1,27 @@
 import { cn } from "@/lib/utils";
+import logoRoxo from "@/assets/logo_rommanel_roxo.png.asset.json";
+import logoBranco from "@/assets/logo_rommanel_branco.png.asset.json";
 
 export interface LogoProps {
   className?: string;
+  /** Versão branca, para usar sobre a câmera ou fundos escuros. */
   claro?: boolean;
 }
 
-/** Placeholder do logo. Troque por <img src="/logo.png" /> quando o arquivo existir. */
+/** Marca da loja. O arquivo vive no CDN; os ponteiros estão em src/assets/. */
 export function Logo({ className, claro = false }: LogoProps) {
   return (
-    <div
-      role="img"
-      aria-label="Logo da loja"
+    <img
+      src={claro ? logoBranco.url : logoRoxo.url}
+      alt="Rommanel"
+      width={1408}
+      height={491}
+      draggable={false}
       className={cn(
-        "mx-auto flex h-10 w-28 items-center justify-center rounded-full border text-xs font-semibold tracking-[0.3em]",
-        claro ? "border-overlay-foreground/60 text-overlay-foreground" : "border-primary/40 text-primary",
+        "mx-auto h-8 w-auto object-contain",
+        claro && "logo-sobre-camara",
         className,
       )}
-    >
-      LOGO
-    </div>
+    />
   );
 }

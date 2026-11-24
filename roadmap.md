@@ -6,3 +6,4 @@
 - [x] Versão realista: consentimento, rota pública, limite servidor (3/IP/24h + teto global), origem, 2 MB, modelo em config
 - [x] Cloud: tabela uso_versao_realista (RLS sem policies), sal secreto
 - [x] Testes de regras
+- [x] Logo Rommanel na base da polaroid (foto e vídeo), abaixo da frase

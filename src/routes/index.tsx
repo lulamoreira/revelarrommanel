@@ -12,10 +12,10 @@ import type { Selecao } from "@/lib/revelar/motor";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Revelar — experimente as joias em você" },
-      { name: "description", content: "Provador virtual de joias: veja brincos, colares e pulseiras em você ao vivo, tire uma foto e compartilhe." },
-      { property: "og:title", content: "Revelar — provador virtual de joias" },
-      { property: "og:description", content: "Experimente as joias da coleção em você, ao vivo pela câmera do celular." },
+      { title: "Revelar — experimente as joias em você | Rommanel" },
+      { name: "description", content: "Provador virtual de joias Rommanel: veja brincos, colares e pulseiras em você ao vivo, tire uma foto e compartilhe." },
+      { property: "og:title", content: "Revelar — provador virtual de joias Rommanel" },
+      { property: "og:description", content: "Experimente as joias da coleção Rommanel em você, ao vivo pela câmera do celular." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],

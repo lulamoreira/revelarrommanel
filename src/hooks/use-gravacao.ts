@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { escolherMimeVideo } from "@/lib/revelar/ambiente";
-import { desenharPolaroid, fontesProntas, medidasPolaroid } from "@/lib/revelar/captura";
+import { desenharPolaroid, fontesProntas, medidasPolaroid, prepararLogoDaMoldura } from "@/lib/revelar/captura";
 
 const DURACAO_MAX_MS = 10_000;
 const LADO_MAX_VIDEO = 720;
@@ -14,6 +14,7 @@ export function useGravacao(cenaRef: RefObject<HTMLCanvasElement | null>, aoTerm
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const dimRef = useRef({ w: 0, h: 0 });
+  const logoRef = useRef<HTMLImageElement | null>(null);
   const inicioRef = useRef(0);
   const timerRef = useRef<number | undefined>(undefined);
   const terminarRef = useRef(aoTerminar);
@@ -23,13 +24,16 @@ export function useGravacao(cenaRef: RefObject<HTMLCanvasElement | null>, aoTerm
     if (typeof MediaRecorder === "undefined" || typeof HTMLCanvasElement.prototype.captureStream !== "function") return;
     setMime(escolherMimeVideo((m) => MediaRecorder.isTypeSupported(m)));
     void fontesProntas();
+    void prepararLogoDaMoldura().then((l) => {
+      logoRef.current = l;
+    });
   }, []);
 
   const desenharQuadro = useCallback(() => {
     const ctx = ctxRef.current;
     const cena = cenaRef.current;
     if (!ctx || !cena) return;
-    desenharPolaroid(ctx, cena, dimRef.current.w, dimRef.current.h, true);
+    desenharPolaroid(ctx, cena, dimRef.current.w, dimRef.current.h, true, logoRef.current);
   }, [cenaRef]);
 
   const parar = useCallback(() => {

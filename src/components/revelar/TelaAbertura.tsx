@@ -8,7 +8,7 @@ export interface TelaAberturaProps {
 export function TelaAbertura({ aoComecar }: TelaAberturaProps) {
   return (
     <main className="flex min-h-dvh flex-col items-center bg-background px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))] text-center">
-      <Logo />
+      <Logo className="h-12" />
       <div className="flex flex-1 flex-col items-center justify-center">
         <p className="text-sm font-medium uppercase tracking-[0.25em] text-muted-foreground">Seu estilo é</p>
         <h1 className="font-script text-7xl leading-tight text-primary">Revelar!</h1>

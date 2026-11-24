@@ -4,6 +4,7 @@ import { pxPorMmRosto, pxPorMmMao, yawNariz, posePulseira } from "@/lib/revelar/
 import { ehNavegadorDeApp, escolherMimeVideo, nomeArquivo, lerLoja } from "@/lib/revelar/ambiente";
 import { avaliarLimites, inicioDoDiaSaoPaulo } from "@/lib/revelar/limites";
 import { LIMITE_DIARIO_GLOBAL } from "@/config/custos";
+import { POLAROID } from "@/config/visual";
 
 describe("escala real", () => {
   it("rosto 234↔454 = 140 mm", () => {
@@ -62,5 +63,15 @@ describe("limites da versão realista", () => {
   });
   it("dia começa à meia-noite de São Paulo", () => {
     expect(inicioDoDiaSaoPaulo(new Date("2026-03-10T02:00:00Z"))).toBe("2026-03-09T03:00:00.000Z");
+  });
+});
+
+describe("moldura polaroid", () => {
+  it("frase e marca cabem na base branca, frase acima da marca", () => {
+    const baixoFrase = POLAROID.frasePosicao + POLAROID.fraseTamanho / 2;
+    const topoLogo = POLAROID.logoPosicao - POLAROID.logoAltura / 2;
+    expect(POLAROID.frasePosicao - POLAROID.fraseTamanho / 2).toBeGreaterThanOrEqual(0);
+    expect(POLAROID.logoPosicao + POLAROID.logoAltura / 2).toBeLessThanOrEqual(1);
+    expect(topoLogo).toBeGreaterThan(baixoFrase);
   });
 });

@@ -1,4 +1,5 @@
-import { VISUAL_CANVAS } from "@/config/visual";
+import logoMoldura from "@/assets/logo_rommanel_roxo.png.asset.json";
+import { POLAROID, VISUAL_CANVAS } from "@/config/visual";
 
 export const LADO_MAX = 1280;
 
@@ -43,12 +44,26 @@ export function medidasPolaroid(w: number, h: number): MedidasPolaroid {
 }
 
 /** Desenha a moldura polaroid com a imagem (texto legível, não espelhado). */
+let logoDaMolduraCache: Promise<HTMLImageElement | null> | null = null;
+
+/**
+ * Carrega uma única vez a marca desenhada na base da polaroid.
+ * Falha de rede devolve null: a foto sai sem a marca, nunca quebra a captura.
+ */
+export function prepararLogoDaMoldura(): Promise<HTMLImageElement | null> {
+  if (!logoDaMolduraCache) {
+    logoDaMolduraCache = carregarImagem(logoMoldura.url).catch(() => null);
+  }
+  return logoDaMolduraCache;
+}
+
 export function desenharPolaroid(
   ctx: CanvasRenderingContext2D,
   fonte: CanvasImageSource,
   w: number,
   h: number,
   espelhar = false,
+  logo?: HTMLImageElement | null,
 ): void {
   const m = medidasPolaroid(w, h);
   ctx.fillStyle = VISUAL_CANVAS.moldura;
@@ -62,11 +77,21 @@ export function desenharPolaroid(
   } else {
     ctx.drawImage(fonte, m.borda, m.borda, w, h);
   }
+  const baseTopo = m.borda + h;
   ctx.fillStyle = VISUAL_CANVAS.texto;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.font = `${Math.round(m.base * 0.45)}px "${VISUAL_CANVAS.fonteManuscrita}", cursive`;
-  ctx.fillText(VISUAL_CANVAS.fraseMoldura, m.largura / 2, m.borda + h + m.base / 2);
+  ctx.font = `${Math.round(m.base * POLAROID.fraseTamanho)}px "${VISUAL_CANVAS.fonteManuscrita}", cursive`;
+  ctx.fillText(VISUAL_CANVAS.fraseMoldura, m.largura / 2, baseTopo + m.base * POLAROID.frasePosicao);
+
+  if (logo && logo.naturalWidth > 0 && logo.naturalHeight > 0) {
+    const proporcao = logo.naturalWidth / logo.naturalHeight;
+    const alturaLimite = m.largura * POLAROID.logoLarguraMax / proporcao;
+    const escala = Math.min(1, alturaLimite / (m.base * POLAROID.logoAltura));
+    const alt = Math.round(m.base * POLAROID.logoAltura * escala);
+    const larg = Math.round(alt * proporcao);
+    ctx.drawImage(logo, (m.largura - larg) / 2, baseTopo + m.base * POLAROID.logoPosicao - alt / 2, larg, alt);
+  }
 }
 
 export function canvasParaBlob(c: HTMLCanvasElement, tipo = "image/jpeg", qualidade = 0.92): Promise<Blob> {
@@ -77,6 +102,7 @@ export function canvasParaBlob(c: HTMLCanvasElement, tipo = "image/jpeg", qualid
 
 export async function polaroidDeImagem(fonte: CanvasImageSource, w: number, h: number): Promise<Blob> {
   await fontesProntas();
+  const logo = await prepararLogoDaMoldura();
   const escala = Math.min(1, LADO_MAX / Math.max(w, h));
   const iw = Math.round(w * escala);
   const ih = Math.round(h * escala);
@@ -86,7 +112,7 @@ export async function polaroidDeImagem(fonte: CanvasImageSource, w: number, h: n
   c.height = m.altura;
   const ctx = c.getContext("2d");
   if (!ctx) throw new Error("Canvas indisponível");
-  desenharPolaroid(ctx, fonte, iw, ih);
+  desenharPolaroid(ctx, fonte, iw, ih, false, logo);
   return canvasParaBlob(c);
 }
 
